@@ -1,13 +1,14 @@
 name: Dev Release
 
-# Automatically tags and publishes a pre-release build on every push to
-# main, versioned by build time (Unix seconds) rather than semantic
-# versioning. Real, intentional releases still go through release.yml by
-# pushing a "vX.Y.Z" tag by hand.
+# Tags and publishes a pre-release build versioned by build time (Unix
+# seconds) rather than semantic versioning, on every push to main. The repo
+# is public, so GitHub's macOS Actions runners are free here (the 10x
+# minute-multiplier only applies to private repos).
 
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -56,19 +57,16 @@ jobs:
             -ov -format UDZO \
             "build/DockSheath-${{ steps.version.outputs.version }}.dmg"
 
-      - name: Create and push tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.version.outputs.tag }}" -m "Automated dev build ${{ steps.version.outputs.tag }}"
-          git push origin "${{ steps.version.outputs.tag }}"
-
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f61 # v2.0.5
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Dev build ${{ steps.version.outputs.version }}
-          prerelease: true
-          make_latest: "false"
-          files: build/DockSheath-${{ steps.version.outputs.version }}.dmg
-          generate_release_notes: true
+        # Uses the gh CLI instead of a third-party action (see release.yml for
+        # why) — this also creates the tag itself, pointed at this commit, so
+        # no separate `git tag`/`git push` step is needed.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            "build/DockSheath-${{ steps.version.outputs.version }}.dmg" \
+            --title "Dev build ${{ steps.version.outputs.version }}" \
+            --target "${{ github.sha }}" \
+            --generate-notes \
+            --prerelease

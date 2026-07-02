@@ -53,12 +53,15 @@ jobs:
             "build/DockSheath-${{ steps.version.outputs.version }}.dmg"
 
       - name: Publish GitHub Release
-        # Pinned from best-effort recollection rather than a live lookup (this
-        # session's GitHub access is scoped to this repo only, so softprops/
-        # action-gh-release@v2's current tag SHA couldn't be verified directly
-        # like the other pins below were, via their actual resolution in a
-        # prior CI run). dependabot.yml will correct this if it's stale/wrong.
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f61 # v2.0.5
-        with:
-          files: build/DockSheath-${{ steps.version.outputs.version }}.dmg
-          generate_release_notes: true
+        # Uses the gh CLI (preinstalled on GitHub-hosted runners, auto-authenticates
+        # via GH_TOKEN) instead of a third-party action, so there's no action SHA
+        # to pin/verify for this step. DockSheath is pre-1.0, so releases are
+        # marked as pre-release for now.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            "build/DockSheath-${{ steps.version.outputs.version }}.dmg" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            --prerelease

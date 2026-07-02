@@ -58,7 +58,7 @@ final class StatusItemController {
             dockWarningMenuItem = nil
         }
 
-        guard diagnosis != .healthy else { return }
+        guard diagnosis != .healthy, diagnosis != .healthyAutoHide else { return }
 
         let warningItem = NSMenuItem(
             title: "⚠️ Dock Configuration Issue…",

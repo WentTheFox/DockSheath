@@ -71,4 +71,27 @@ public enum DockGeometry {
     public static func isDockReservationHealthy(for screen: NSScreen) -> Bool {
         currentReservation(for: screen) != nil
     }
+
+    /// The Dock's configured edge preference (bottom/left/right), read
+    /// directly from `com.apple.dock`. Needed when the Dock is auto-hidden,
+    /// since an auto-hidden Dock reserves no space at all — macOS doesn't
+    /// treat its temporary hover-reveal as a layout change — so there's no
+    /// `visibleFrame` inset to infer the edge from in that case.
+    public static func dockOrientationPreference() -> DockEdge? {
+        guard let raw = CFPreferencesCopyAppValue("orientation" as CFString, "com.apple.dock" as CFString) as? String else {
+            return nil
+        }
+        return DockEdge(rawValue: raw)
+    }
+
+    /// The Dock's configured icon size preference, used as a reasonable
+    /// approximation of its thickness when temporarily revealing DockSheath's
+    /// taskbar to mirror an auto-hidden Dock (which has no reserved size to
+    /// measure, unlike the non-auto-hide case).
+    public static func dockTileSizePreference() -> CGFloat? {
+        guard let number = CFPreferencesCopyAppValue("tilesize" as CFString, "com.apple.dock" as CFString) as? NSNumber else {
+            return nil
+        }
+        return CGFloat(number.doubleValue)
+    }
 }

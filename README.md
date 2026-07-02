@@ -13,7 +13,7 @@ The project name is inspired by the concept of hiding the dock when not needed (
 
 Unlike apps that try to hide or replace the real macOS Dock, **DockSheath leaves the Dock running** and simply draws its own taskbar on top of it, covering it visually. Because the real Dock is still present on whichever edge of the screen it occupies, macOS itself reserves that space in `NSScreen.visibleFrame` — so double-clicking a window's title bar to maximize just works, with no windows getting cut off behind the taskbar, and no private APIs involved.
 
-DockSheath follows the Dock to wherever it is — bottom, left, or right — laying itself out horizontally at the bottom or vertically on the side to match. It just requires the system Dock to stay **visible** (not auto-hidden); DockSheath detects and warns you if that isn't the case, with a one-click fix available from its menu bar item.
+DockSheath follows the Dock to wherever it is — bottom, left, or right — laying itself out horizontally at the bottom or vertically on the side to match. If the Dock is set to **auto-hide**, there's no reserved space to cover (macOS treats an auto-hidden Dock's hover-reveal as a temporary overlay, not a layout change), so DockSheath mirrors it instead: hidden until the mouse reaches that edge, hidden again shortly after it moves away. If DockSheath can't find the Dock reserving space or auto-hidden on any edge at all, it warns you from its menu bar item.
 
 Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad, right-click Dock menus)? Hide the DockSheath taskbar instantly from the menu bar item or a configurable global hotkey (default `⌘⌥D`) to reveal it underneath.
 
@@ -30,7 +30,7 @@ Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad,
 
 - macOS 13 Ventura or later
 - **Accessibility** permission (required — lets DockSheath list, activate, minimize, and close other apps' windows)
-- The system Dock set to **visible** (not auto-hidden) — DockSheath follows it to whichever edge it's on
+- The system Dock enabled on some edge of the screen — visible or auto-hidden, DockSheath follows either
 
 ## Installation
 

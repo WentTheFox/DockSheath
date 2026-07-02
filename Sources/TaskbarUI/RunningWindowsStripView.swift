@@ -7,6 +7,7 @@ import AXWindowKit
 /// AXObserver-driven live refresh is a post-MVP improvement).
 public final class RunningWindowsStripView: NSView {
     private let stackView = NSStackView()
+    private var orientationConstraints: [NSLayoutConstraint] = []
     private let service = WindowEnumerationService()
     private var groups: [RunningAppGroup] = []
     private var pollTimer: Timer?
@@ -14,19 +15,20 @@ public final class RunningWindowsStripView: NSView {
         didSet { restartPolling() }
     }
 
+    public var orientation: NSUserInterfaceLayoutOrientation = .horizontal {
+        didSet {
+            guard oldValue != orientation else { return }
+            applyOrientation()
+        }
+    }
+
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
-        stackView.orientation = .horizontal
         stackView.spacing = 4
-        stackView.alignment = .centerY
         stackView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stackView)
-        NSLayoutConstraint.activate([
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stackView.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
+        applyOrientation()
 
         registerForWorkspaceNotifications()
         restartPolling()
@@ -36,6 +38,25 @@ public final class RunningWindowsStripView: NSView {
     @available(*, unavailable)
     public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    private func applyOrientation() {
+        stackView.orientation = orientation
+        stackView.alignment = orientation == .horizontal ? .centerY : .centerX
+
+        NSLayoutConstraint.deactivate(orientationConstraints)
+        orientationConstraints = orientation == .horizontal
+            ? [
+                stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                stackView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            ]
+            : [
+                stackView.topAnchor.constraint(equalTo: topAnchor),
+                stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+                stackView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            ]
+        NSLayoutConstraint.activate(orientationConstraints)
     }
 
     deinit {

@@ -45,6 +45,7 @@ let package = Package(
             dependencies: [
                 "AXWindowKit",
                 "JSON5Config",
+                "DockOverlayKit",
             ],
             path: "Sources/TaskbarUI"
         ),

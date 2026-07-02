@@ -11,15 +11,15 @@ The project name is inspired by the concept of hiding the dock when not needed (
 
 ## How it works
 
-Unlike apps that try to hide or replace the real macOS Dock, **DockSheath leaves the Dock running** and simply draws its own taskbar on top of it, covering it visually. Because the real Dock is still present at the bottom of the screen, macOS itself reserves that space in `NSScreen.visibleFrame` — so double-clicking a window's title bar to maximize just works, with no windows getting cut off behind the taskbar, and no private APIs involved.
+Unlike apps that try to hide or replace the real macOS Dock, **DockSheath leaves the Dock running** and simply draws its own taskbar on top of it, covering it visually. Because the real Dock is still present on whichever edge of the screen it occupies, macOS itself reserves that space in `NSScreen.visibleFrame` — so double-clicking a window's title bar to maximize just works, with no windows getting cut off behind the taskbar, and no private APIs involved.
 
-This means DockSheath requires the system Dock to stay **visible and positioned at the bottom of the screen** (not auto-hidden, not on the left/right). DockSheath detects and warns you if this isn't the case, with a one-click fix available from its menu bar item.
+DockSheath follows the Dock to wherever it is — bottom, left, or right — laying itself out horizontally at the bottom or vertically on the side to match. It just requires the system Dock to stay **visible** (not auto-hidden); DockSheath detects and warns you if that isn't the case, with a one-click fix available from its menu bar item.
 
 Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad, right-click Dock menus)? Hide the DockSheath taskbar instantly from the menu bar item or a configurable global hotkey (default `⌘⌥D`) to reveal it underneath.
 
 ## Features
 
-- Taskbar docked at the bottom of the screen with genuine screen-space reservation
+- Taskbar docked to whichever screen edge the Dock is on (bottom, left, or right) with genuine screen-space reservation
 - Running windows grouped by app — click to activate/minimize, right-click to close
 - Pinned "quick launch" apps strip, separate from running windows
 - Start-menu-style searchable app launcher
@@ -30,7 +30,7 @@ Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad,
 
 - macOS 13 Ventura or later
 - **Accessibility** permission (required — lets DockSheath list, activate, minimize, and close other apps' windows)
-- The system Dock set to **visible** (not auto-hidden) and positioned at the **bottom** of the screen
+- The system Dock set to **visible** (not auto-hidden) — DockSheath follows it to whichever edge it's on
 
 ## Installation
 

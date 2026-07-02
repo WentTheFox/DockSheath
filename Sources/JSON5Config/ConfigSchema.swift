@@ -57,12 +57,14 @@ public struct PinnedAppEntry: Codable, Equatable, Identifiable {
 }
 
 public struct TaskbarAppearanceConfig: Codable, Equatable {
-    /// When nil, the taskbar height is auto-detected from the system Dock's
+    /// The taskbar's thickness along its short axis — height when the Dock
+    /// (and therefore the taskbar) is at the bottom, width when it's on the
+    /// left or right. When nil, it's auto-detected from the system Dock's
     /// reserved screen inset rather than a fixed value.
-    public var heightOverride: Double?
+    public var sizeOverride: Double?
 
-    public init(heightOverride: Double? = nil) {
-        self.heightOverride = heightOverride
+    public init(sizeOverride: Double? = nil) {
+        self.sizeOverride = sizeOverride
     }
 }
 

@@ -100,7 +100,7 @@ final class StatusItemController {
         case .alertSecondButtonReturn:
             let confirm = NSAlert()
             confirm.messageText = "Change Dock Settings?"
-            confirm.informativeText = "This will set the Dock to visible, bottom-positioned, and restart the Dock process."
+            confirm.informativeText = "This will turn off Dock auto-hide and restart the Dock process."
             confirm.addButton(withTitle: "Change Settings")
             confirm.addButton(withTitle: "Cancel")
             if confirm.runModal() == .alertFirstButtonReturn {

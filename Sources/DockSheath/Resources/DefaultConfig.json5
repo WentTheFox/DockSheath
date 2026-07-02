@@ -16,10 +16,12 @@
   ],
 
   "taskbar": {
-    // Leave as null to auto-detect the taskbar height from the system
-    // Dock's reserved screen space. Only set this if you want to override
-    // that detection.
-    "heightOverride": null,
+    // DockSheath follows the real Dock to whichever edge of the screen it's
+    // on (bottom, left, or right). Leave sizeOverride as null to auto-detect
+    // the taskbar's thickness (height at the bottom, width on the side)
+    // from the system Dock's reserved screen space. Only set this if you
+    // want to override that detection.
+    "sizeOverride": null,
   },
 
   "hotkeys": {

@@ -10,7 +10,7 @@ final class ConfigSchemaTests: XCTestCase {
           "pinnedApps": [
             { "bundlePath": "/Applications/Safari.app", "bundleIdentifier": "com.apple.Safari" },
           ],
-          "taskbar": { "heightOverride": null, },
+          "taskbar": { "sizeOverride": null, },
           "hotkeys": { "toggleVisibility": { "keyCode": 2, "modifiers": ["command", "option"] } },
           "behavior": {
             "autoHideOnMouseLeave": false,
@@ -26,7 +26,7 @@ final class ConfigSchemaTests: XCTestCase {
         XCTAssertEqual(config.schemaVersion, 1)
         XCTAssertEqual(config.pinnedApps.count, 1)
         XCTAssertEqual(config.pinnedApps.first?.bundleIdentifier, "com.apple.Safari")
-        XCTAssertNil(config.taskbar.heightOverride)
+        XCTAssertNil(config.taskbar.sizeOverride)
         XCTAssertEqual(config.hotkeys.toggleVisibility?.keyCode, 2)
         XCTAssertTrue(config.behavior.groupWindowsByApp)
         XCTAssertEqual(config.appearance.theme, "auto")

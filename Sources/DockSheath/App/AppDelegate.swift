@@ -58,6 +58,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.onHealthChanged = { [weak statusItem] diagnosis in
             statusItem?.updateDockHealth(diagnosis)
         }
+        overlay.onReservationChanged = { [weak taskbarVC] reservation in
+            taskbarVC?.updateLayout(for: reservation.edge)
+        }
 
         taskbarVC.onPinnedAppsChanged = { pinnedApps in
             var updated = ConfigStore.shared.config
@@ -71,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func applyConfig(_ config: TaskbarConfig) {
         taskbarViewController?.pinnedApps = config.pinnedApps
-        overlayController?.heightOverride = config.taskbar.heightOverride.map { CGFloat($0) }
+        overlayController?.sizeOverride = config.taskbar.sizeOverride.map { CGFloat($0) }
         registerHotKey(binding: config.hotkeys.toggleVisibility)
     }
 

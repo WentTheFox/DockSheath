@@ -6,29 +6,50 @@ import JSON5Config
 /// strip, matching uBar's model of two distinct zones.
 public final class PinnedAppsStripView: NSView {
     private let stackView = NSStackView()
+    private var orientationConstraints: [NSLayoutConstraint] = []
     public var pinnedApps: [PinnedAppEntry] = [] {
         didSet { rebuildButtons() }
     }
     public var onUnpin: ((PinnedAppEntry) -> Void)?
 
+    public var orientation: NSUserInterfaceLayoutOrientation = .horizontal {
+        didSet {
+            guard oldValue != orientation else { return }
+            applyOrientation()
+        }
+    }
+
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
-        stackView.orientation = .horizontal
         stackView.spacing = 4
-        stackView.alignment = .centerY
         stackView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stackView)
-        NSLayoutConstraint.activate([
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stackView.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
+        applyOrientation()
     }
 
     @available(*, unavailable)
     public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    private func applyOrientation() {
+        stackView.orientation = orientation
+        stackView.alignment = orientation == .horizontal ? .centerY : .centerX
+
+        NSLayoutConstraint.deactivate(orientationConstraints)
+        orientationConstraints = orientation == .horizontal
+            ? [
+                stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                stackView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            ]
+            : [
+                stackView.topAnchor.constraint(equalTo: topAnchor),
+                stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+                stackView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            ]
+        NSLayoutConstraint.activate(orientationConstraints)
     }
 
     private func rebuildButtons() {

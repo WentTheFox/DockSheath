@@ -20,6 +20,10 @@ let package = Package(
                 "GlobalHotKey",
             ],
             path: "Sources/DockSheath",
+            exclude: [
+                "App/Info.plist",
+                "App/DockSheath.entitlements",
+            ],
             resources: [
                 .copy("Resources/DefaultConfig.json5")
             ]

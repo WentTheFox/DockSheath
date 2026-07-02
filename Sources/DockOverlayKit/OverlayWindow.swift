@@ -7,7 +7,12 @@ import CoreGraphics
 public final class OverlayWindow: NSWindow {
     public init(screen: NSScreen) {
         let frame = DockGeometry.overlayFrame(for: screen)
-        super.init(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false, screen: screen)
+        // `contentRect` is in global screen coordinates, so this still lands
+        // on the right screen even without disambiguating via `screen:` —
+        // which matters here because the `screen:`-taking initializer is a
+        // convenience initializer, and subclass `init` must call a
+        // designated one.
+        super.init(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
         configure()
     }
 

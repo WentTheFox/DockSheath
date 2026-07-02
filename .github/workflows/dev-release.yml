@@ -1,18 +1,19 @@
-name: Release
+name: Dev Release
+
+# Automatically tags and publishes a pre-release build on every push to
+# main, versioned by build time (Unix seconds) rather than semantic
+# versioning. Real, intentional releases still go through release.yml by
+# pushing a "vX.Y.Z" tag by hand.
 
 on:
   push:
-    tags:
-      # Only real, hand-pushed semantic version tags — excludes the
-      # "vX.Y.Z-devNNNNNNNNNN" tags dev-release.yml creates automatically.
-      - "v*.*.*"
-      - "!v*-dev*"
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  dev-release:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -25,15 +26,18 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#v}"
+          TIMESTAMP="$(date +%s)"
+          VERSION="0.0.1-dev${TIMESTAMP}"
+          TAG="v${VERSION}"
+          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Set Info.plist version
         run: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" \
             Sources/DockSheath/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" \
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.timestamp }}" \
             Sources/DockSheath/App/Info.plist
 
       - name: Build app bundle (Release)
@@ -52,13 +56,19 @@ jobs:
             -ov -format UDZO \
             "build/DockSheath-${{ steps.version.outputs.version }}.dmg"
 
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Automated dev build ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
       - name: Publish GitHub Release
-        # Pinned from best-effort recollection rather than a live lookup (this
-        # session's GitHub access is scoped to this repo only, so softprops/
-        # action-gh-release@v2's current tag SHA couldn't be verified directly
-        # like the other pins below were, via their actual resolution in a
-        # prior CI run). dependabot.yml will correct this if it's stale/wrong.
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f61 # v2.0.5
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Dev build ${{ steps.version.outputs.version }}
+          prerelease: true
+          make_latest: "false"
           files: build/DockSheath-${{ steps.version.outputs.version }}.dmg
           generate_release_notes: true

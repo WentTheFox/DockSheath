@@ -24,6 +24,24 @@ public struct TaskbarConfig: Codable, Equatable {
         self.behavior = behavior
         self.appearance = appearance
     }
+
+    // Swift's synthesized Decodable requires every key to be present for
+    // non-optional properties — it does NOT fall back to the memberwise
+    // initializer's default values. A custom decoder is needed so a config
+    // file that only sets a few fields (or is empty) still loads correctly.
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, pinnedApps, taskbar, hotkeys, behavior, appearance
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        pinnedApps = try container.decodeIfPresent([PinnedAppEntry].self, forKey: .pinnedApps) ?? []
+        taskbar = try container.decodeIfPresent(TaskbarAppearanceConfig.self, forKey: .taskbar) ?? TaskbarAppearanceConfig()
+        hotkeys = try container.decodeIfPresent(HotkeyConfig.self, forKey: .hotkeys) ?? HotkeyConfig()
+        behavior = try container.decodeIfPresent(BehaviorConfig.self, forKey: .behavior) ?? BehaviorConfig()
+        appearance = try container.decodeIfPresent(AppearanceConfig.self, forKey: .appearance) ?? AppearanceConfig()
+    }
 }
 
 public struct PinnedAppEntry: Codable, Equatable, Identifiable {
@@ -86,6 +104,18 @@ public struct BehaviorConfig: Codable, Equatable {
         self.groupWindowsByApp = groupWindowsByApp
         self.refreshIntervalMs = refreshIntervalMs
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case autoHideOnMouseLeave, showOnAllDisplays, groupWindowsByApp, refreshIntervalMs
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        autoHideOnMouseLeave = try container.decodeIfPresent(Bool.self, forKey: .autoHideOnMouseLeave) ?? false
+        showOnAllDisplays = try container.decodeIfPresent(Bool.self, forKey: .showOnAllDisplays) ?? false
+        groupWindowsByApp = try container.decodeIfPresent(Bool.self, forKey: .groupWindowsByApp) ?? true
+        refreshIntervalMs = try container.decodeIfPresent(Int.self, forKey: .refreshIntervalMs) ?? 1500
+    }
 }
 
 public struct AppearanceConfig: Codable, Equatable {
@@ -104,6 +134,18 @@ public struct AppearanceConfig: Codable, Equatable {
         self.accentColor = accentColor
         self.iconSize = iconSize
         self.showAppLabels = showAppLabels
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case theme, accentColor, iconSize, showAppLabels
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        theme = try container.decodeIfPresent(String.self, forKey: .theme) ?? "auto"
+        accentColor = try container.decodeIfPresent(String.self, forKey: .accentColor)
+        iconSize = try container.decodeIfPresent(Double.self, forKey: .iconSize) ?? 32
+        showAppLabels = try container.decodeIfPresent(Bool.self, forKey: .showAppLabels) ?? false
     }
 }
 

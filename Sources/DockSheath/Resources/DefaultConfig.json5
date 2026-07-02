@@ -1,0 +1,44 @@
+// DockSheath configuration
+//
+// This file supports a restricted subset of JSON5: standard JSON plus
+// `//` and `/* */` comments and trailing commas. It does NOT support the
+// full JSON5 spec (no unquoted keys, no single-quoted strings).
+//
+// DockSheath watches this file and reloads it automatically whenever you
+// save changes — no need to restart the app.
+{
+  "schemaVersion": 1,
+
+  // Apps pinned to the quick-launch strip. Add entries by dragging an app
+  // onto the taskbar, or by hand-editing this list.
+  "pinnedApps": [
+    // { "bundlePath": "/Applications/Safari.app", "bundleIdentifier": "com.apple.Safari" },
+  ],
+
+  "taskbar": {
+    // Leave as null to auto-detect the taskbar height from the system
+    // Dock's reserved screen space. Only set this if you want to override
+    // that detection.
+    "heightOverride": null,
+  },
+
+  "hotkeys": {
+    // Global shortcut to show/hide the taskbar (revealing the real Dock
+    // underneath). Default: Command+Option+D.
+    "toggleVisibility": { "keyCode": 2, "modifiers": ["command", "option"] },
+  },
+
+  "behavior": {
+    "autoHideOnMouseLeave": false,
+    "showOnAllDisplays": false,
+    "groupWindowsByApp": true,
+    "refreshIntervalMs": 1500,
+  },
+
+  "appearance": {
+    "theme": "auto", // "auto" | "light" | "dark"
+    "accentColor": null,
+    "iconSize": 32,
+    "showAppLabels": false,
+  },
+}

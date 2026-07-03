@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var secondaryDisplays: SecondaryDisplayManager?
     private var statusItemController: StatusItemController?
     private var onboardingWindowController: PermissionsOnboardingWindowController?
+    private var settingsWindowController: SettingsWindowController?
     private var hotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -18,7 +19,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Dock icon (.accessory) and no status item, closing the onboarding
         // window would leave the app running with no way to reopen it or
         // quit.
-        statusItemController = StatusItemController()
+        let statusItem = StatusItemController()
+        statusItemController = statusItem
+        statusItem.onOpenSettings = { [weak self] in self?.showSettings() }
 
         ConfigStore.shared.onConfigChanged = { [weak self] config in
             self?.applyConfig(config)
@@ -29,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if PermissionChecks.isAccessibilityTrusted {
             startCore()
         } else {
-            statusItemController?.showPendingSetup { [weak self] in self?.showOnboarding() }
+            statusItem.showPendingSetup { [weak self] in self?.showOnboarding() }
             showOnboarding()
         }
     }
@@ -57,6 +60,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.showAndActivate()
     }
 
+    /// Reuses the existing Settings window/controller if one's already open,
+    /// same as `showOnboarding()`.
+    private func showSettings() {
+        if let existing = settingsWindowController {
+            existing.showAndActivate()
+            return
+        }
+        let controller = SettingsWindowController()
+        settingsWindowController = controller
+        controller.showAndActivate()
+    }
+
     private func startCore() {
         guard primaryInstance == nil else { return }
 
@@ -68,8 +83,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         primaryInstance = primary
 
-        let statusItem = statusItemController ?? StatusItemController()
-        statusItemController = statusItem
+        // Always non-nil by this point — created up front in
+        // applicationDidFinishLaunching().
+        let statusItem = statusItemController!
         statusItem.showRunning(overlayController: primary.overlay)
         primary.overlay.onHealthChanged = { [weak statusItem] diagnosis in
             statusItem?.updateDockHealth(diagnosis)

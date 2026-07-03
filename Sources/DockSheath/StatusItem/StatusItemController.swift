@@ -17,6 +17,10 @@ final class StatusItemController {
     /// Called alongside the primary overlay's own toggle, so secondary-screen
     /// taskbars (see `SecondaryDisplayManager`) show/hide together with it.
     var onAdditionalToggle: (() -> Void)?
+    /// Opens the Settings window — available in both menu states, since
+    /// editing config.json5 through it doesn't need Accessibility access or
+    /// a running taskbar.
+    var onOpenSettings: (() -> Void)?
 
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -51,6 +55,10 @@ final class StatusItemController {
         openSetupItem.target = self
         menu.addItem(openSetupItem)
 
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit DockSheath", action: #selector(quit), keyEquivalent: "q")
@@ -75,6 +83,10 @@ final class StatusItemController {
         toggleMenuItem = toggleItem
 
         menu.addItem(.separator())
+
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
 
         let editConfigItem = NSMenuItem(
             title: "Edit Config File…",
@@ -118,6 +130,10 @@ final class StatusItemController {
 
     @objc private func openSetup() {
         onOpenSetup?()
+    }
+
+    @objc private func openSettings() {
+        onOpenSettings?()
     }
 
     @objc private func toggleTaskbarVisibility() {

@@ -3,6 +3,7 @@ import SwiftUI
 public struct QuickLaunchSearchView: View {
     @State private var query: String = ""
     @State private var selectedIndex: Int = 0
+    @FocusState private var isSearchFocused: Bool
     private let allApps: [InstalledApp]
     private let onLaunch: (InstalledApp) -> Void
     private let onPin: ((InstalledApp) -> Void)?
@@ -23,8 +24,10 @@ public struct QuickLaunchSearchView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 16))
                 .padding(10)
+                .focused($isSearchFocused)
                 .onChange(of: query) { _ in selectedIndex = 0 }
                 .onSubmit(launchSelected)
+                .onAppear { isSearchFocused = true }
 
             Divider()
 

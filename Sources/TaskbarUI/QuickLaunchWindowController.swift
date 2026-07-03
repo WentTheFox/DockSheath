@@ -2,6 +2,19 @@ import AppKit
 import SwiftUI
 import DockOverlayKit
 
+/// A `.nonactivatingPanel` doesn't bring the owning app forward just by
+/// being clicked — by design, so an accessory panel like this doesn't steal
+/// focus from whatever app the user was using. But combined with
+/// `NSView`'s default `acceptsFirstMouse(for:)` (false), a click landing
+/// before the panel is actually key only orders it front/key without
+/// delivering that click to whatever's underneath — e.g. the search field —
+/// so the user's first click appears to do nothing. `acceptsFirstMouse(for:)`
+/// lives on `NSView`, not `NSWindow`/`NSPanel`, so it has to be overridden on
+/// the hosting view itself rather than the panel.
+private final class AcceptsFirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 /// A borderless panel anchored next to the taskbar's Start button — above it
 /// for a bottom Dock, to the side of it for a left/right Dock — hosting the
 /// SwiftUI quick-launch/search view.
@@ -10,7 +23,7 @@ public final class QuickLaunchWindowController: NSWindowController {
 
     public init(onLaunch: @escaping (InstalledApp) -> Void, onPin: ((InstalledApp) -> Void)? = nil) {
         let apps = InstalledAppsIndex.scan()
-        let hostingController = NSHostingController(
+        let hostingView = AcceptsFirstMouseHostingView(
             rootView: QuickLaunchSearchView(allApps: apps, onLaunch: onLaunch, onPin: onPin)
         )
 
@@ -20,7 +33,12 @@ public final class QuickLaunchWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        panel.contentViewController = hostingController
+        // Bypassing NSHostingController (which wires this up for free) means
+        // doing it ourselves: without an autoresizing mask, the content view
+        // would keep its initial frame instead of tracking the panel's
+        // frame, which show(near:dockEdge:) changes on every reveal.
+        hostingView.autoresizingMask = [.width, .height]
+        panel.contentView = hostingView
         panel.isFloatingPanel = true
         panel.level = .popUpMenu
         panel.hasShadow = true

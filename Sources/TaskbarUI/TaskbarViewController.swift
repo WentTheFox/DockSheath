@@ -189,7 +189,6 @@ public final class TaskbarViewController: NSViewController {
     private func applyShowLabels() {
         guard isViewLoaded else { return }
 
-        startButton.showsLabel = showAppLabels
         pinnedStrip.showsLabels = showAppLabels
         runningStrip.showsLabels = showAppLabels
     }

@@ -46,7 +46,7 @@ public final class QuickLaunchWindowController: NSWindowController {
         let width = max(size.width, 420)
         let height = max(size.height, 420)
 
-        let origin: NSPoint
+        var origin: NSPoint
         switch dockEdge {
         case .bottom:
             origin = NSPoint(x: point.x - width / 2, y: point.y)
@@ -54,6 +54,16 @@ public final class QuickLaunchWindowController: NSWindowController {
             origin = NSPoint(x: point.x, y: point.y - height / 2)
         case .right:
             origin = NSPoint(x: point.x - width, y: point.y - height / 2)
+        }
+
+        // The anchor point can sit close to a screen edge (e.g. the Start
+        // button on a bottom taskbar pinned near the screen's left edge),
+        // which centering/side-anchoring alone can push partly off-screen.
+        // Clamp back onto whichever screen the anchor point is actually on.
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }) ?? NSScreen.main {
+            let bounds = screen.visibleFrame
+            origin.x = min(max(origin.x, bounds.minX + 8), bounds.maxX - width - 8)
+            origin.y = min(max(origin.y, bounds.minY + 8), bounds.maxY - height - 8)
         }
 
         panel.setFrame(NSRect(origin: origin, size: NSSize(width: width, height: height)), display: true)

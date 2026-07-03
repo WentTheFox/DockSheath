@@ -16,6 +16,24 @@ public enum AccessibilityWindowController {
         AXUIElementSetAttributeValue(window.axElement, kAXMinimizedAttribute as CFString, kCFBooleanTrue)
     }
 
+    /// Moves/resizes a window to `frame`, given in AppKit/Cocoa screen
+    /// coordinates (bottom-left origin, y up) — converted to the
+    /// Accessibility API's coordinate space (top-left origin, y down)
+    /// before writing. See `AXGeometry`. Used to pull windows out from
+    /// under a taskbar's reserved strip on screens without a real Dock,
+    /// where nothing at the OS level keeps them from overlapping it.
+    public static func setFrame(_ window: RunningWindow, to frame: CGRect) {
+        let axRect = AXGeometry.flip(frame, primaryScreenHeight: AXGeometry.primaryScreenHeight)
+        var position = axRect.origin
+        var size = axRect.size
+        guard let positionValue = AXValueCreate(.cgPoint, &position),
+              let sizeValue = AXValueCreate(.cgSize, &size) else {
+            return
+        }
+        AXUIElementSetAttributeValue(window.axElement, kAXPositionAttribute as CFString, positionValue)
+        AXUIElementSetAttributeValue(window.axElement, kAXSizeAttribute as CFString, sizeValue)
+    }
+
     public static func close(_ window: RunningWindow) {
         var closeButtonValue: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(

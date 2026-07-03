@@ -2,18 +2,23 @@ import AppKit
 import DockOverlayKit
 import AXWindowKit
 import JSON5Config
-import TaskbarUI
 import GlobalHotKey
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var overlayController: OverlayWindowController?
+    private var primaryInstance: TaskbarInstance?
+    private var secondaryDisplays: SecondaryDisplayManager?
     private var statusItemController: StatusItemController?
-    private var taskbarViewController: TaskbarViewController?
     private var onboardingWindowController: PermissionsOnboardingWindowController?
     private var hotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+
+        // Created up front, before permissions are even checked: with no
+        // Dock icon (.accessory) and no status item, closing the onboarding
+        // window would leave the app running with no way to reopen it or
+        // quit.
+        statusItemController = StatusItemController()
 
         ConfigStore.shared.onConfigChanged = { [weak self] config in
             self?.applyConfig(config)
@@ -24,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if PermissionChecks.isAccessibilityTrusted {
             startCore()
         } else {
+            statusItemController?.showPendingSetup { [weak self] in self?.showOnboarding() }
             showOnboarding()
         }
     }
@@ -36,7 +42,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return text
     }
 
+    /// Reuses the existing onboarding window/controller if one's already
+    /// been created (e.g. re-shown via the status item's "Open Setup…" after
+    /// the user closed it) rather than creating a second one.
     private func showOnboarding() {
+        if let existing = onboardingWindowController {
+            existing.showAndActivate()
+            return
+        }
         let controller = PermissionsOnboardingWindowController { [weak self] in
             self?.startCore()
         }
@@ -45,39 +58,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startCore() {
-        guard overlayController == nil else { return }
+        guard primaryInstance == nil else { return }
 
-        let taskbarVC = TaskbarViewController()
-        taskbarViewController = taskbarVC
+        let primaryScreen = SecondaryDisplayManager.detectPrimaryDockScreen()
+        let primary = TaskbarInstance(
+            screen: primaryScreen,
+            displayNumber: SecondaryDisplayManager.displayNumber(for: primaryScreen),
+            reservationStrategy: .followRealDock
+        )
+        primaryInstance = primary
 
-        let overlay = OverlayWindowController(contentViewController: taskbarVC)
-        overlayController = overlay
-
-        let statusItem = StatusItemController(overlayController: overlay)
+        let statusItem = statusItemController ?? StatusItemController()
         statusItemController = statusItem
-        overlay.onHealthChanged = { [weak statusItem] diagnosis in
+        statusItem.showRunning(overlayController: primary.overlay)
+        primary.overlay.onHealthChanged = { [weak statusItem] diagnosis in
             statusItem?.updateDockHealth(diagnosis)
         }
-        overlay.onReservationChanged = { [weak taskbarVC] reservation in
-            taskbarVC?.updateLayout(for: reservation.edge)
-        }
 
-        taskbarVC.onPinnedAppsChanged = { pinnedApps in
-            var updated = ConfigStore.shared.config
-            updated.pinnedApps = pinnedApps
-            ConfigStore.shared.save(updated)
+        let secondary = SecondaryDisplayManager(primaryScreen: primaryScreen)
+        secondaryDisplays = secondary
+        statusItem.onAdditionalToggle = { [weak secondary] in
+            secondary?.toggleVisibility()
         }
 
         applyConfig(ConfigStore.shared.config)
-        overlay.start()
+        primary.start()
     }
 
     private func applyConfig(_ config: TaskbarConfig) {
-        taskbarViewController?.theme = TaskbarTheme.resolve(config.appearance)
-        taskbarViewController?.showAppLabels = config.appearance.showAppLabels
-        taskbarViewController?.groupWindowsByApp = config.behavior.groupWindowsByApp
-        taskbarViewController?.pinnedApps = config.pinnedApps
-        overlayController?.sizeOverride = config.taskbar.sizeOverride.map { CGFloat($0) }
+        primaryInstance?.apply(config: config)
+        secondaryDisplays?.apply(config: config)
         registerHotKey(binding: config.hotkeys.toggleVisibility)
     }
 
@@ -85,7 +95,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKey = nil
         guard let binding else { return }
         hotKey = GlobalHotKey(binding: binding) { [weak self] in
-            self?.overlayController?.toggleVisibility()
+            self?.primaryInstance?.toggleVisibility()
+            self?.secondaryDisplays?.toggleVisibility()
         }
     }
 }

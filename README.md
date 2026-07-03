@@ -16,6 +16,8 @@ DockSheath follows the Dock to wherever it is — bottom, left, or right — lay
 
 Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad, right-click Dock menus)? Hide the DockSheath taskbar instantly from the menu bar item or a configurable global hotkey (default `⌘⌥D`) to reveal it underneath.
 
+With `behavior.showOnAllDisplays` enabled, DockSheath also renders a taskbar on every other connected screen. The real Dock only ever occupies one screen, so macOS reserves no space at all on the others — DockSheath compensates by actively watching for windows that get placed under its taskbar there and resizing them to sit above it instead.
+
 ## Features
 
 - Taskbar docked to whichever screen edge the Dock is on (bottom, left, or right) with genuine screen-space reservation
@@ -25,6 +27,9 @@ Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad,
 - Hand-editable JSON5 configuration (comments + trailing commas supported), live-reloaded on save
 - Taskbar and button colors follow the system light/dark appearance by default, with per-element background/border/text overrides available in config
 - Toggle the taskbar via menu bar item or global hotkey to reveal the real Dock underneath
+- Optional taskbar on every other connected display too (`behavior.showOnAllDisplays`) — those screens have no real Dock reserving space for it, so DockSheath actively keeps windows there from sitting underneath it
+- Optional display-number badge and formatted clock at the trailing edge of each taskbar (`appearance.showDisplayNumber`, `appearance.clock`)
+- Secondary-display taskbars can override taskbar size and appearance independently (`secondaryDisplay`), inheriting anything left unset from the main config
 
 ## Requirements
 
@@ -65,6 +70,57 @@ A commented default is generated on first run. It supports the full [JSON5 spec]
 
 Note: pinning/unpinning an app from the taskbar UI rewrites the file as plain JSON and will remove any comments you've added — hand-edit comments back in afterward if you'd like to keep them.
 
+### Display-number badge and clock
+
+Setting `appearance.showDisplayNumber` to `true` shows a small badge with the screen's number (matching the order in System Settings → Displays) at the trailing edge of its taskbar — handy for telling secondary-display taskbars apart at a glance.
+
+`appearance.clock` adds an optional clock next to it:
+
+```json5
+"clock": {
+  "enabled": true,
+  "format": "h:mm a", // -> "3:45 PM"
+},
+```
+
+`format` uses [`DateFormatter`'s pattern syntax](https://unicode-org.github.io/icu/userguide/format_parse/datetime/#date-field-symbol-table) (Unicode TR35). A few common tokens:
+
+| Token | Meaning | Example |
+| --- | --- | --- |
+| `h` / `H` | hour, 12h / 24h | `3` / `15` |
+| `mm` | minute, zero-padded | `45` |
+| `ss` | second, zero-padded | `09` |
+| `a` | AM/PM | `PM` |
+| `EEE` | weekday, short | `Tue` |
+| `MMM` | month, short | `Jul` |
+| `d` | day of month | `3` |
+
+Some example formats:
+
+| `format` | Renders as |
+| --- | --- |
+| `h:mm a` | `3:45 PM` |
+| `HH:mm` | `15:45` |
+| `h:mm a EEE` | `3:45 PM Tue` |
+| `M/d/yy h:mm a` | `7/3/26 3:45 PM` |
+
+### Secondary-display overrides
+
+When `behavior.showOnAllDisplays` is enabled, the `secondaryDisplay` section lets those taskbars differ from the main one. Any field you set under `secondaryDisplay.taskbar`/`secondaryDisplay.appearance` overrides the matching field in `taskbar`/`appearance`; anything left `null`/omitted inherits the main config's value. The primary display (the one the real Dock is on) always uses `taskbar`/`appearance` directly and ignores this section.
+
+```json5
+"secondaryDisplay": {
+  "taskbar": {
+    "sizeOverride": 40,
+  },
+  "appearance": {
+    "theme": "dark",
+    "showDisplayNumber": true,
+    "clock": { "enabled": true, "format": "HH:mm" },
+  },
+},
+```
+
 ## Contributing
 
 The codebase is split into focused Swift Package targets under `Sources/`:
@@ -82,10 +138,10 @@ Pull requests welcome. Since DockSheath needs Accessibility access to do anythin
 
 ## Known limitations
 
-- Single-display only for now — the taskbar appears on the main screen (multi-monitor support is planned)
 - Not distributed on the Mac App Store (DockSheath runs unsandboxed by necessity, since sandboxed apps can't control other apps' windows via the Accessibility API)
 - Window content thumbnails/previews are not implemented yet
 - The real Dock's own hover tooltips can still appear while it's covered by the taskbar. DockSheath's overlay window does correctly intercept mouse events for its own buttons (it isn't click-through), so this points to the Dock using its own cursor-position tracking that isn't gated by window occlusion — there's no public API to suppress another app's UI, so this isn't something DockSheath can fix
+- On secondary displays (`showOnAllDisplays`), windows that drift under the taskbar are pulled back above it on a ~1s poll rather than instantly, since there's no lightweight per-window move/resize notification available without a heavier per-window `AXObserver`
 
 ## License
 

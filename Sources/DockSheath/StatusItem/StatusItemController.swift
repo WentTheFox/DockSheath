@@ -2,24 +2,67 @@ import AppKit
 import DockOverlayKit
 import JSON5Config
 
+/// Owns the app's single menu-bar status item for its entire lifetime.
+/// Created immediately at launch (see `AppDelegate`), before Accessibility
+/// permission is even checked — otherwise, with no Dock icon (the app runs
+/// as `.accessory`) and no status item either, closing the onboarding
+/// window leaves the app running with no way to reopen it or quit.
 final class StatusItemController {
     private let statusItem: NSStatusItem
-    private let overlayController: OverlayWindowController
+    private var overlayController: OverlayWindowController?
     private var dockWarningMenuItem: NSMenuItem?
     private var toggleMenuItem: NSMenuItem?
+    private var onOpenSetup: (() -> Void)?
 
-    init(overlayController: OverlayWindowController) {
-        self.overlayController = overlayController
+    /// Called alongside the primary overlay's own toggle, so secondary-screen
+    /// taskbars (see `SecondaryDisplayManager`) show/hide together with it.
+    var onAdditionalToggle: (() -> Void)?
+
+    init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "dock.rectangle", accessibilityDescription: "DockSheath")
         }
 
-        buildMenu()
+        buildPendingSetupMenu()
     }
 
-    private func buildMenu() {
+    /// The menu shown before Accessibility access is granted, when there's no
+    /// taskbar running yet — just a way to reopen the setup window (in case
+    /// the user closed it) and to quit.
+    func showPendingSetup(onOpenSetup: @escaping () -> Void) {
+        self.onOpenSetup = onOpenSetup
+        overlayController = nil
+        buildPendingSetupMenu()
+    }
+
+    /// Switches to the full menu once the taskbar is actually running.
+    func showRunning(overlayController: OverlayWindowController) {
+        self.overlayController = overlayController
+        onOpenSetup = nil
+        buildRunningMenu()
+    }
+
+    private func buildPendingSetupMenu() {
+        let menu = NSMenu()
+
+        let openSetupItem = NSMenuItem(title: "Open Setup…", action: #selector(openSetup), keyEquivalent: "")
+        openSetupItem.target = self
+        menu.addItem(openSetupItem)
+
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(title: "Quit DockSheath", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        statusItem.menu = menu
+        toggleMenuItem = nil
+        dockWarningMenuItem = nil
+    }
+
+    private func buildRunningMenu() {
         let menu = NSMenu()
 
         let toggleItem = NSMenuItem(
@@ -48,10 +91,11 @@ final class StatusItemController {
         menu.addItem(quitItem)
 
         statusItem.menu = menu
+        dockWarningMenuItem = nil
     }
 
     func updateDockHealth(_ diagnosis: DockHealthCheck.Diagnosis) {
-        guard let menu = statusItem.menu else { return }
+        guard overlayController != nil, let menu = statusItem.menu else { return }
 
         if let existing = dockWarningMenuItem {
             menu.removeItem(existing)
@@ -72,8 +116,14 @@ final class StatusItemController {
         dockWarningMenuItem = warningItem
     }
 
+    @objc private func openSetup() {
+        onOpenSetup?()
+    }
+
     @objc private func toggleTaskbarVisibility() {
+        guard let overlayController else { return }
         overlayController.toggleVisibility()
+        onAdditionalToggle?()
         toggleMenuItem?.title = overlayController.isVisible ? "Hide Taskbar" : "Show Taskbar"
     }
 

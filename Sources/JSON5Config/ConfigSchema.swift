@@ -8,6 +8,12 @@ public struct TaskbarConfig: Codable, Equatable {
     public var hotkeys: HotkeyConfig
     public var behavior: BehaviorConfig
     public var appearance: AppearanceConfig
+    /// Overrides applied on top of `taskbar`/`appearance` for every screen
+    /// except the one hosting the real Dock, when `behavior.showOnAllDisplays`
+    /// is enabled. Any field left unset here falls back to the corresponding
+    /// top-level `taskbar`/`appearance` value — see `TaskbarAppearanceConfig
+    /// .applying(_:)` / `AppearanceConfig.applying(_:)`.
+    public var secondaryDisplay: SecondaryDisplayConfig
 
     public init(
         schemaVersion: Int = 1,
@@ -15,7 +21,8 @@ public struct TaskbarConfig: Codable, Equatable {
         taskbar: TaskbarAppearanceConfig = TaskbarAppearanceConfig(),
         hotkeys: HotkeyConfig = HotkeyConfig(),
         behavior: BehaviorConfig = BehaviorConfig(),
-        appearance: AppearanceConfig = AppearanceConfig()
+        appearance: AppearanceConfig = AppearanceConfig(),
+        secondaryDisplay: SecondaryDisplayConfig = SecondaryDisplayConfig()
     ) {
         self.schemaVersion = schemaVersion
         self.pinnedApps = pinnedApps
@@ -23,6 +30,7 @@ public struct TaskbarConfig: Codable, Equatable {
         self.hotkeys = hotkeys
         self.behavior = behavior
         self.appearance = appearance
+        self.secondaryDisplay = secondaryDisplay
     }
 
     // Swift's synthesized Decodable requires every key to be present for
@@ -30,7 +38,7 @@ public struct TaskbarConfig: Codable, Equatable {
     // initializer's default values. A custom decoder is needed so a config
     // file that only sets a few fields (or is empty) still loads correctly.
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, pinnedApps, taskbar, hotkeys, behavior, appearance
+        case schemaVersion, pinnedApps, taskbar, hotkeys, behavior, appearance, secondaryDisplay
     }
 
     public init(from decoder: Decoder) throws {
@@ -41,6 +49,7 @@ public struct TaskbarConfig: Codable, Equatable {
         hotkeys = try container.decodeIfPresent(HotkeyConfig.self, forKey: .hotkeys) ?? HotkeyConfig()
         behavior = try container.decodeIfPresent(BehaviorConfig.self, forKey: .behavior) ?? BehaviorConfig()
         appearance = try container.decodeIfPresent(AppearanceConfig.self, forKey: .appearance) ?? AppearanceConfig()
+        secondaryDisplay = try container.decodeIfPresent(SecondaryDisplayConfig.self, forKey: .secondaryDisplay) ?? SecondaryDisplayConfig()
     }
 }
 
@@ -61,6 +70,26 @@ public struct TaskbarAppearanceConfig: Codable, Equatable {
     /// (and therefore the taskbar) is at the bottom, width when it's on the
     /// left or right. When nil, it's auto-detected from the system Dock's
     /// reserved screen inset rather than a fixed value.
+    public var sizeOverride: Double?
+
+    public init(sizeOverride: Double? = nil) {
+        self.sizeOverride = sizeOverride
+    }
+
+    /// Returns a copy with any non-nil field in `overrides` replacing this
+    /// value's own — used to resolve a secondary display's effective
+    /// taskbar config from `secondaryDisplay.taskbar` + the top-level
+    /// `taskbar`.
+    public func applying(_ overrides: TaskbarAppearanceOverrides) -> TaskbarAppearanceConfig {
+        TaskbarAppearanceConfig(sizeOverride: overrides.sizeOverride ?? sizeOverride)
+    }
+}
+
+/// Per-field overrides mirroring `TaskbarAppearanceConfig`, for
+/// `secondaryDisplay.taskbar`. Every field is `nil` by default, meaning
+/// "inherit the top-level `taskbar` value" — see `TaskbarAppearanceConfig
+/// .applying(_:)`.
+public struct TaskbarAppearanceOverrides: Codable, Equatable {
     public var sizeOverride: Double?
 
     public init(sizeOverride: Double? = nil) {
@@ -127,6 +156,12 @@ public struct AppearanceConfig: Codable, Equatable {
     public var showAppLabels: Bool
     public var taskbarColors: TaskbarColorOverrides
     public var buttonColors: ButtonColorOverrides
+    /// Shows a small badge with this screen's display number (1-based,
+    /// following `NSScreen.screens` order) at the taskbar's trailing edge.
+    /// Mostly useful once `behavior.showOnAllDisplays` is on and there's more
+    /// than one taskbar to tell apart.
+    public var showDisplayNumber: Bool
+    public var clock: ClockConfig
 
     public init(
         theme: String = "auto",
@@ -134,7 +169,9 @@ public struct AppearanceConfig: Codable, Equatable {
         iconSize: Double = 32,
         showAppLabels: Bool = true,
         taskbarColors: TaskbarColorOverrides = TaskbarColorOverrides(),
-        buttonColors: ButtonColorOverrides = ButtonColorOverrides()
+        buttonColors: ButtonColorOverrides = ButtonColorOverrides(),
+        showDisplayNumber: Bool = false,
+        clock: ClockConfig = ClockConfig()
     ) {
         self.theme = theme
         self.accentColor = accentColor
@@ -142,10 +179,12 @@ public struct AppearanceConfig: Codable, Equatable {
         self.showAppLabels = showAppLabels
         self.taskbarColors = taskbarColors
         self.buttonColors = buttonColors
+        self.showDisplayNumber = showDisplayNumber
+        self.clock = clock
     }
 
     private enum CodingKeys: String, CodingKey {
-        case theme, accentColor, iconSize, showAppLabels, taskbarColors, buttonColors
+        case theme, accentColor, iconSize, showAppLabels, taskbarColors, buttonColors, showDisplayNumber, clock
     }
 
     public init(from decoder: Decoder) throws {
@@ -156,14 +195,119 @@ public struct AppearanceConfig: Codable, Equatable {
         showAppLabels = try container.decodeIfPresent(Bool.self, forKey: .showAppLabels) ?? true
         taskbarColors = try container.decodeIfPresent(TaskbarColorOverrides.self, forKey: .taskbarColors) ?? TaskbarColorOverrides()
         buttonColors = try container.decodeIfPresent(ButtonColorOverrides.self, forKey: .buttonColors) ?? ButtonColorOverrides()
+        showDisplayNumber = try container.decodeIfPresent(Bool.self, forKey: .showDisplayNumber) ?? false
+        clock = try container.decodeIfPresent(ClockConfig.self, forKey: .clock) ?? ClockConfig()
+    }
+
+    /// Returns a copy with any non-nil field in `overrides` replacing this
+    /// value's own — used to resolve a secondary display's effective
+    /// appearance from `secondaryDisplay.appearance` + the top-level
+    /// `appearance`. `taskbarColors`/`buttonColors`/`clock` are replaced as
+    /// whole structs when overridden, not merged field-by-field.
+    public func applying(_ overrides: AppearanceOverrides) -> AppearanceConfig {
+        AppearanceConfig(
+            theme: overrides.theme ?? theme,
+            accentColor: overrides.accentColor ?? accentColor,
+            iconSize: overrides.iconSize ?? iconSize,
+            showAppLabels: overrides.showAppLabels ?? showAppLabels,
+            taskbarColors: overrides.taskbarColors ?? taskbarColors,
+            buttonColors: overrides.buttonColors ?? buttonColors,
+            showDisplayNumber: overrides.showDisplayNumber ?? showDisplayNumber,
+            clock: overrides.clock ?? clock
+        )
+    }
+}
+
+/// Per-field overrides mirroring `AppearanceConfig`, for
+/// `secondaryDisplay.appearance`. Every field is `nil` by default, meaning
+/// "inherit the top-level `appearance` value" — see `AppearanceConfig
+/// .applying(_:)`.
+public struct AppearanceOverrides: Codable, Equatable {
+    public var theme: String?
+    public var accentColor: String?
+    public var iconSize: Double?
+    public var showAppLabels: Bool?
+    public var taskbarColors: TaskbarColorOverrides?
+    public var buttonColors: ButtonColorOverrides?
+    public var showDisplayNumber: Bool?
+    public var clock: ClockConfig?
+
+    public init(
+        theme: String? = nil,
+        accentColor: String? = nil,
+        iconSize: Double? = nil,
+        showAppLabels: Bool? = nil,
+        taskbarColors: TaskbarColorOverrides? = nil,
+        buttonColors: ButtonColorOverrides? = nil,
+        showDisplayNumber: Bool? = nil,
+        clock: ClockConfig? = nil
+    ) {
+        self.theme = theme
+        self.accentColor = accentColor
+        self.iconSize = iconSize
+        self.showAppLabels = showAppLabels
+        self.taskbarColors = taskbarColors
+        self.buttonColors = buttonColors
+        self.showDisplayNumber = showDisplayNumber
+        self.clock = clock
+    }
+}
+
+/// A taskbar clock, formatted with a `DateFormatter`-style pattern (the same
+/// Unicode date-field syntax `DateFormatter.dateFormat` uses — see the
+/// README's Configuration section for a token reference and examples).
+public struct ClockConfig: Codable, Equatable {
+    public var enabled: Bool
+    public var format: String
+
+    public init(enabled: Bool = false, format: String = "h:mm a") {
+        self.enabled = enabled
+        self.format = format
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case enabled, format
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        format = try container.decodeIfPresent(String.self, forKey: .format) ?? "h:mm a"
+    }
+}
+
+/// Overrides applied on top of `taskbar`/`appearance` for every screen
+/// except the one hosting the real Dock (see `TaskbarConfig.secondaryDisplay`).
+public struct SecondaryDisplayConfig: Codable, Equatable {
+    public var taskbar: TaskbarAppearanceOverrides
+    public var appearance: AppearanceOverrides
+
+    public init(
+        taskbar: TaskbarAppearanceOverrides = TaskbarAppearanceOverrides(),
+        appearance: AppearanceOverrides = AppearanceOverrides()
+    ) {
+        self.taskbar = taskbar
+        self.appearance = appearance
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case taskbar, appearance
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        taskbar = try container.decodeIfPresent(TaskbarAppearanceOverrides.self, forKey: .taskbar) ?? TaskbarAppearanceOverrides()
+        appearance = try container.decodeIfPresent(AppearanceOverrides.self, forKey: .appearance) ?? AppearanceOverrides()
     }
 }
 
 /// Hex color overrides (e.g. `"#RRGGBB"` or `"#RRGGBBAA"`) for the taskbar's
 /// own background/border. Leaving a field `null` (the default) means "follow
-/// the system light/dark appearance" instead of a fixed color. The taskbar
-/// itself has no text of its own, so there's no `text` field here — see
-/// `ButtonColorOverrides` for the taskbar buttons' text color.
+/// the system light/dark appearance" instead of a fixed color. There's no
+/// `text` field here since the taskbar chrome itself (as opposed to its
+/// buttons) only ever shows text via the display-number badge/clock, which
+/// reuse `ButtonColorOverrides.text` for visual consistency with the rest of
+/// the taskbar's text.
 public struct TaskbarColorOverrides: Codable, Equatable {
     public var background: String?
     public var border: String?
@@ -175,8 +319,9 @@ public struct TaskbarColorOverrides: Codable, Equatable {
 }
 
 /// Hex color overrides for the taskbar buttons (pinned apps, running
-/// windows, and the Quick Launch button). Every field is optional and
-/// `null` by default, meaning "follow the system appearance/accent color".
+/// windows, and the Quick Launch button), also reused for the display-number
+/// badge and clock's text color. Every field is optional and `null` by
+/// default, meaning "follow the system appearance/accent color".
 public struct ButtonColorOverrides: Codable, Equatable {
     public var background: String?
     public var border: String?

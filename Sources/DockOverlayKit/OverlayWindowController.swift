@@ -13,8 +13,24 @@ import AppKit
 /// stays hidden until the mouse reaches the relevant screen edge, then
 /// hides again shortly after the mouse moves away.
 public final class OverlayWindowController {
+    /// How this controller decides what screen space to reserve/cover.
+    public enum ReservationStrategy {
+        /// Detect and cover the real Dock's reserved screen space — the
+        /// default, and the only strategy that gets genuine OS-level space
+        /// reservation for free via `NSScreen.visibleFrame`.
+        case followRealDock
+        /// Reserve a fixed strip on the given edge regardless of what (if
+        /// anything) macOS itself has reserved there. Used for secondary
+        /// displays that don't have their own real Dock — nothing at the OS
+        /// level reserves space there automatically, so callers using this
+        /// strategy are expected to separately enforce the boundary against
+        /// other windows (see `DockSheath`'s `SecondaryDisplayManager`).
+        case fixed(edge: DockEdge)
+    }
+
     public let window: OverlayWindow
     public var sizeOverride: CGFloat?
+    public var reservationStrategy: ReservationStrategy
     public var onHealthChanged: ((DockHealthCheck.Diagnosis) -> Void)?
     public var onReservationChanged: ((DockReservation) -> Void)?
 
@@ -41,10 +57,21 @@ public final class OverlayWindowController {
 
     private static let defaultAutoRevealThickness: CGFloat = 70
 
-    public init(contentViewController: NSViewController, screen: NSScreen? = nil) {
+    public init(
+        contentViewController: NSViewController,
+        screen: NSScreen? = nil,
+        reservationStrategy: ReservationStrategy = .followRealDock
+    ) {
+        self.reservationStrategy = reservationStrategy
         let targetScreen = screen ?? NSScreen.main ?? NSScreen.screens[0]
+        let initialEdge: DockEdge
+        if case .fixed(let edge) = reservationStrategy {
+            initialEdge = edge
+        } else {
+            initialEdge = .bottom
+        }
         let initialReservation = DockGeometry.currentReservation(for: targetScreen)
-            ?? Self.fallbackReservation(for: targetScreen, edge: .bottom)
+            ?? Self.fallbackReservation(for: targetScreen, edge: initialEdge)
         window = OverlayWindow(reservation: initialReservation)
         window.contentViewController = contentViewController
         // lastEdge is deliberately left nil (not set to initialReservation.edge)
@@ -104,20 +131,32 @@ public final class OverlayWindowController {
     private func refreshGeometry() {
         guard let screen = window.screen ?? NSScreen.main else { return }
 
-        if DockHealthCheck.isAutoHideEnabled() {
-            enterAutoHideMirroringIfNeeded(screen: screen)
-        } else {
-            exitAutoHideMirroringIfNeeded()
-            let reservation = DockGeometry.currentReservation(for: screen, sizeOverride: sizeOverride)
-                ?? Self.fallbackReservation(for: screen, edge: lastEdge ?? .bottom)
+        switch reservationStrategy {
+        case .followRealDock:
+            if DockHealthCheck.isAutoHideEnabled() {
+                enterAutoHideMirroringIfNeeded(screen: screen)
+            } else {
+                exitAutoHideMirroringIfNeeded()
+                let reservation = DockGeometry.currentReservation(for: screen, sizeOverride: sizeOverride)
+                    ?? Self.fallbackReservation(for: screen, edge: lastEdge ?? .bottom)
+                window.reposition(to: reservation)
+                reportEdgeIfChanged(reservation.edge, rect: reservation.rect)
+            }
+
+            let diagnosis = DockHealthCheck.diagnose(screen: screen)
+            if diagnosis != lastDiagnosis {
+                lastDiagnosis = diagnosis
+                onHealthChanged?(diagnosis)
+            }
+
+        case .fixed(let edge):
+            // No OS-level reservation exists to detect (or diagnose) on a
+            // screen without a real Dock, so this always just re-measures
+            // the fixed strip at the current thickness/screen size.
+            let thickness = sizeOverride ?? DockGeometry.dockTileSizePreference() ?? Self.defaultAutoRevealThickness
+            let reservation = Self.fallbackReservation(for: screen, edge: edge, thickness: thickness)
             window.reposition(to: reservation)
             reportEdgeIfChanged(reservation.edge, rect: reservation.rect)
-        }
-
-        let diagnosis = DockHealthCheck.diagnose(screen: screen)
-        if diagnosis != lastDiagnosis {
-            lastDiagnosis = diagnosis
-            onHealthChanged?(diagnosis)
         }
     }
 

@@ -1,7 +1,6 @@
 # DockSheath
 
 [![Build](https://github.com/WentTheFox/MacOSTaskbar/actions/workflows/build.yml/badge.svg)](https://github.com/WentTheFox/MacOSTaskbar/actions/workflows/build.yml)
-[![Release](https://github.com/WentTheFox/MacOSTaskbar/actions/workflows/release.yml/badge.svg)](https://github.com/WentTheFox/MacOSTaskbar/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
 
@@ -30,26 +29,23 @@ Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad,
 ## Requirements
 
 - macOS 13 Ventura or later
+- Xcode 15+ (or the Swift 5.9+ command-line toolchain) to build — DockSheath isn't distributed as a pre-built binary, see [Installation](#installation)
 - **Accessibility** permission (required — lets DockSheath list, activate, minimize, and close other apps' windows)
 - The system Dock enabled on some edge of the screen — visible or auto-hidden, DockSheath follows either
 
 ## Installation
 
-1. Download the latest `.dmg` from [Releases](https://github.com/WentTheFox/MacOSTaskbar/releases)
-2. Open the DMG and drag `DockSheath.app` to `/Applications`
-3. See [Gatekeeper bypass](#gatekeeper-bypass) below before first launch
+DockSheath doesn't ship pre-built binaries — build and run it from source:
 
-### Gatekeeper bypass
+```sh
+git clone https://github.com/WentTheFox/MacOSTaskbar.git
+cd MacOSTaskbar
+swift build -c release
+Scripts/build_app.sh release build   # assembles build/DockSheath.app
+open build/DockSheath.app
+```
 
-DockSheath is not signed with a paid Apple Developer ID (this is a free, community-run project), so macOS Gatekeeper will block the first launch. To open it:
-
-- **Right-click (or Control-click) `DockSheath.app` → Open**, then confirm in the dialog that appears, **or**
-- Run this in Terminal after moving it to `/Applications`:
-  ```sh
-  xattr -cr /Applications/DockSheath.app
-  ```
-
-You only need to do this once.
+Or `open Package.swift` to build and run directly from Xcode instead. Move `build/DockSheath.app` to `/Applications` if you want it to stick around.
 
 ## Permissions
 
@@ -67,19 +63,6 @@ A commented default is generated on first run. It supports the full [JSON5 spec]
 
 Note: pinning/unpinning an app from the taskbar UI rewrites the file as plain JSON and will remove any comments you've added — hand-edit comments back in afterward if you'd like to keep them.
 
-## Building from source
-
-Requires Xcode 15+ (or the Swift 5.9+ toolchain) on macOS 13+.
-
-```sh
-git clone https://github.com/WentTheFox/MacOSTaskbar.git
-cd MacOSTaskbar
-open Package.swift        # opens directly in Xcode, or:
-swift build                # command-line build
-swift test                 # run the JSON5Config / AXWindowKit test suites
-Scripts/build_app.sh debug # assemble a runnable DockSheath.app locally
-```
-
 ## Contributing
 
 The codebase is split into focused Swift Package targets under `Sources/`:
@@ -90,6 +73,8 @@ The codebase is split into focused Swift Package targets under `Sources/`:
 - `JSON5Config` — the JSON5 parser and config store
 - `TaskbarUI` — taskbar chrome, pinned apps, and the quick-launch panel
 - `GlobalHotKey` — the systemwide show/hide shortcut
+
+Run `swift test` to run the `JSON5Config`/`AXWindowKit` test suites.
 
 Pull requests welcome. Since DockSheath needs Accessibility access to do anything useful, and ad-hoc code signatures change on every local rebuild, macOS's permission system (TCC) may re-prompt you repeatedly while iterating — using a stable local self-signed code-signing certificate for development builds avoids this (see Apple's documentation on creating a certificate in Keychain Access and set it as your local `codesign` identity instead of `-`).
 

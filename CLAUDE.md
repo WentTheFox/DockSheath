@@ -48,7 +48,7 @@ Defined in `Package.swift`. Bottom-up:
 
 Deliberately uses `NSWorkspace.runningApplications` + `AXUIElement` (`kAXWindowsAttribute`, `kAXTitleAttribute`, etc.) as the source of truth for window existence, minimized state, *and* titles — not `CGWindowListCopyWindowInfo`. Reading a window's AX title does not require Screen Recording permission (only Accessibility does), unlike `CGWindowListCopyWindowInfo`'s window name. Actions (activate/minimize/close) go through `AXUIElementPerformAction`/attribute writes in `AccessibilityWindowController.swift`.
 
-The app is **intentionally non-sandboxed** (no `com.apple.security.app-sandbox` key in `Sources/DockSheath/App/DockSheath.entitlements`) — sandboxed apps can't control other processes' windows via the Accessibility API. This rules out Mac App Store distribution; DockSheath ships via GitHub Releases only.
+The app is **intentionally non-sandboxed** (no `com.apple.security.app-sandbox` key in `Sources/DockSheath/App/DockSheath.entitlements`) — sandboxed apps can't control other processes' windows via the Accessibility API. This rules out Mac App Store distribution; DockSheath is build-from-source only (see CI/CD below).
 
 ### Config pipeline (`JSON5Config`)
 
@@ -60,9 +60,6 @@ Config lives at `~/.config/docksheath/config.json5` and is live-reloaded via `Co
 
 ### CI/CD (`.github/workflows/`)
 
-Three workflows, all runners pinned to specific action commit SHAs (kept current by `.github/dependabot.yml`):
-- `build.yml` — runs on push/PR to `main`: `swift build`, `swift test`, then an `xcodebuild -scheme DockSheath` sanity build.
-- `dev-release.yml` — runs on push to `main` (repo is public, so macOS Actions runners are free): auto-tags `v0.0.1-dev<unix-timestamp>` and publishes a pre-release DMG.
-- `release.yml` — manual: triggered by pushing a real `vX.Y.Z` tag, publishes a pre-release DMG. Its tag pattern explicitly excludes `v*-dev*` so it never double-fires on `dev-release.yml`'s auto-generated tags.
+Just one workflow, `build.yml` (runners pinned to specific action commit SHAs, kept current by `.github/dependabot.yml`): runs on push/PR to `main`, `swift build`, `swift test`, then an `xcodebuild -scheme DockSheath` sanity build.
 
-Releases are **ad-hoc code-signed** (`codesign --force --deep --sign -`, no paid Apple Developer ID) and published via the `gh` CLI directly (`gh release create ...` in a plain `run:` step) rather than a third-party GitHub Action, specifically to avoid needing to pin/verify another action's SHA.
+DockSheath does **not** ship pre-built binaries/releases — `release.yml` (tag-triggered) and `dev-release.yml` (auto pre-release per push to `main`) both existed earlier in the project's history and were deliberately removed; users build from source per the README's Installation section instead. If you're tempted to re-add release automation, that's a reversal of an explicit decision, not an oversight — confirm with the user first.

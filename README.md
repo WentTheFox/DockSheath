@@ -98,6 +98,7 @@ Pull requests welcome. Since DockSheath needs Accessibility access to do anythin
 - Single-display only for now — the taskbar appears on the main screen (multi-monitor support is planned)
 - Not distributed on the Mac App Store (DockSheath runs unsandboxed by necessity, since sandboxed apps can't control other apps' windows via the Accessibility API)
 - Window content thumbnails/previews are not implemented yet
+- The real Dock's own hover tooltips can still appear while it's covered by the taskbar. DockSheath's overlay window does correctly intercept mouse events for its own buttons (it isn't click-through), so this points to the Dock using its own cursor-position tracking that isn't gated by window occlusion — there's no public API to suppress another app's UI, so this isn't something DockSheath can fix
 
 ## License
 

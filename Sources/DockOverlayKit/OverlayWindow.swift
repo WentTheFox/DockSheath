@@ -36,4 +36,14 @@ public final class OverlayWindow: NSWindow {
 
     public override var canBecomeKey: Bool { true }
     public override var canBecomeMain: Bool { false }
+
+    /// Without this, a click on a taskbar button while DockSheath isn't the
+    /// active app (the common case — the user is normally focused on
+    /// whatever app they're switching away from) only activates/orders the
+    /// window front; the click itself isn't delivered to the button, so
+    /// activating the button takes a first "wasted" click and a second real
+    /// one. Since the overlay window only ever contains DockSheath's own
+    /// taskbar chrome, there's no reason a first click shouldn't act on it
+    /// directly.
+    public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

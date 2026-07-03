@@ -2,6 +2,19 @@ import AppKit
 import SwiftUI
 import DockOverlayKit
 
+/// A `.nonactivatingPanel` doesn't bring the owning app forward just by
+/// being clicked — by design, so an accessory panel like this doesn't steal
+/// focus from whatever app the user was using. But combined with
+/// `NSWindow`'s default `acceptsFirstMouse(for:)` (false), a click landing
+/// before the panel is actually key only orders it front/key without
+/// delivering that click to whatever's underneath — e.g. the search field —
+/// so the user's first click appears to do nothing. Since this panel only
+/// ever hosts DockSheath's own quick-launch UI, there's no reason a first
+/// click shouldn't act on it directly.
+private final class QuickLaunchPanel: NSPanel {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 /// A borderless panel anchored next to the taskbar's Start button — above it
 /// for a bottom Dock, to the side of it for a left/right Dock — hosting the
 /// SwiftUI quick-launch/search view.
@@ -14,7 +27,7 @@ public final class QuickLaunchWindowController: NSWindowController {
             rootView: QuickLaunchSearchView(allApps: apps, onLaunch: onLaunch, onPin: onPin)
         )
 
-        let panel = NSPanel(
+        let panel = QuickLaunchPanel(
             contentRect: NSRect(x: 0, y: 0, width: 420, height: 420),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,

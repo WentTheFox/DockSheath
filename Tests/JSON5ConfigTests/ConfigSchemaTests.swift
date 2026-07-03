@@ -32,6 +32,26 @@ final class ConfigSchemaTests: XCTestCase {
         XCTAssertEqual(config.appearance.theme, "auto")
     }
 
+    func testParsesFullJSON5SyntaxThroughToTypedConfig() throws {
+        let text = """
+        {
+          // full JSON5 syntax exercised end-to-end
+          schemaVersion: 1,
+          pinnedApps: [
+            { bundlePath: '/Applications/Safari.app', bundleIdentifier: 'com.apple.Safari' },
+          ],
+          taskbar: { sizeOverride: .5e2 }, // unquoted key + leading-dot exponent number
+          appearance: { theme: 'auto', iconSize: 0x20, showAppLabels: false },
+        }
+        """
+
+        let config = try TaskbarConfig.parse(json5: text)
+        XCTAssertEqual(config.schemaVersion, 1)
+        XCTAssertEqual(config.pinnedApps.first?.bundlePath, "/Applications/Safari.app")
+        XCTAssertEqual(config.taskbar.sizeOverride, 50)
+        XCTAssertEqual(config.appearance.iconSize, 32)
+    }
+
     func testDefaultsApplyForMissingOptionalFields() throws {
         let text = "{ \"schemaVersion\": 1 }"
         let config = try TaskbarConfig.parse(json5: text)

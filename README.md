@@ -62,7 +62,7 @@ DockSheath stores its config at:
 ~/.config/docksheath/config.json5
 ```
 
-A commented default is generated on first run. It supports a restricted subset of JSON5 — standard JSON plus `//` and `/* */` comments and trailing commas (not the full JSON5 spec: no unquoted keys, no single-quoted strings). Edits are picked up automatically while DockSheath is running — no restart needed.
+A commented default is generated on first run. It supports the full [JSON5 spec](https://spec.json5.org) — comments, trailing commas, unquoted keys, single-quoted strings, and more. Edits are picked up automatically while DockSheath is running — no restart needed.
 
 Note: pinning/unpinning an app from the taskbar UI rewrites the file as plain JSON and will remove any comments you've added — hand-edit comments back in afterward if you'd like to keep them.
 
@@ -86,7 +86,7 @@ The codebase is split into focused Swift Package targets under `Sources/`:
 - `DockSheath` — app bootstrap, menu bar item, onboarding
 - `DockOverlayKit` — the Dock-covering overlay window and screen-space-reservation geometry
 - `AXWindowKit` — window enumeration/control via the Accessibility API
-- `JSON5Config` — the restricted-JSON5 parser and config store
+- `JSON5Config` — the JSON5 parser and config store
 - `TaskbarUI` — taskbar chrome, pinned apps, and the quick-launch panel
 - `GlobalHotKey` — the systemwide show/hide shortcut
 

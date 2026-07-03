@@ -153,26 +153,42 @@ public struct AppearanceConfig: Codable, Equatable {
 
 extension TaskbarConfig {
     public enum ParseError: Error, CustomStringConvertible {
-        case invalidUTF8
         case decodingFailed(String)
 
         public var description: String {
             switch self {
-            case .invalidUTF8:
-                return "Config file is not valid UTF-8"
             case .decodingFailed(let message):
                 return message
             }
         }
     }
 
-    /// Parses a restricted-JSON5 config document (see `JSON5Preprocessor`).
+    /// Parses a full JSON5 document (see `JSON5Parser`) and decodes it into
+    /// a `TaskbarConfig`. The JSON5 value tree is converted to plain
+    /// Foundation types and re-serialized as standard JSON so `JSONDecoder`
+    /// (and this type's custom `init(from:)` default-value handling) can do
+    /// the typed decoding unchanged.
     public static func parse(json5 text: String) throws -> TaskbarConfig {
-        let jsonText = try JSON5Preprocessor.preprocess(text)
-        guard let data = jsonText.data(using: .utf8) else {
-            throw ParseError.invalidUTF8
-        }
+        let value: JSON5Value
         do {
+            value = try JSON5Parser.parse(text)
+        } catch {
+            throw ParseError.decodingFailed("Failed to parse config.json5: \(error)")
+        }
+
+        guard case .object = value else {
+            throw ParseError.decodingFailed("Failed to parse config.json5: the top-level value must be an object")
+        }
+
+        let foundationValue = value.toFoundation()
+        guard JSONSerialization.isValidJSONObject(foundationValue) else {
+            throw ParseError.decodingFailed(
+                "Failed to parse config.json5: contains a value (e.g. Infinity or NaN) that isn't representable in standard JSON"
+            )
+        }
+
+        do {
+            let data = try JSONSerialization.data(withJSONObject: foundationValue)
             return try JSONDecoder().decode(TaskbarConfig.self, from: data)
         } catch {
             throw ParseError.decodingFailed("Failed to parse config.json5: \(error)")

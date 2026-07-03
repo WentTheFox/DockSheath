@@ -1,8 +1,8 @@
 // DockSheath configuration
 //
-// This file supports a restricted subset of JSON5: standard JSON plus
-// `//` and `/* */` comments and trailing commas. It does NOT support the
-// full JSON5 spec (no unquoted keys, no single-quoted strings).
+// This file supports the full JSON5 spec (https://spec.json5.org): comments
+// like this one, trailing commas, unquoted keys, single-quoted strings, and
+// more.
 //
 // DockSheath watches this file and reloads it automatically whenever you
 // save changes — no need to restart the app.

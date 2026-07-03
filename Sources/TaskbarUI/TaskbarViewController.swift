@@ -201,7 +201,7 @@ public final class TaskbarViewController: NSViewController {
         let anchorPoint: NSPoint
         switch currentEdge {
         case .bottom:
-            anchorPoint = NSPoint(x: screenFrame.midX, y: screenFrame.midY)
+            anchorPoint = NSPoint(x: screenFrame.midX, y: screenFrame.maxY)
         case .left:
             anchorPoint = NSPoint(x: screenFrame.maxX, y: screenFrame.midY)
         case .right:

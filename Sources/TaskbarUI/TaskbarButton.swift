@@ -29,13 +29,18 @@ public final class TaskbarButton: NSView {
 
     private let imageView: NSImageView
     private let label: NSTextField
+    private let iconSize: CGFloat
     public var showsLabel: Bool = false {
-        didSet { label.isHidden = !showsLabel }
+        didSet {
+            label.isHidden = !showsLabel
+            invalidateIntrinsicContentSize()
+        }
     }
 
     public init(icon: NSImage?, title: String, iconSize: CGFloat = 32) {
         imageView = NSImageView(frame: .zero)
         label = NSTextField(labelWithString: title)
+        self.iconSize = iconSize
 
         super.init(frame: NSRect(x: 0, y: 0, width: iconSize + 16, height: iconSize + 16))
 
@@ -71,6 +76,17 @@ public final class TaskbarButton: NSView {
     @available(*, unavailable)
     public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    /// The button has no width/height constraints of its own (only its
+    /// subviews do), so without this it's ambiguously sized once placed in
+    /// an `NSStackView` arranged-subviews list, which sets
+    /// `translatesAutoresizingMaskIntoConstraints = false` on every arranged
+    /// subview it manages.
+    public override var intrinsicContentSize: NSSize {
+        let width = iconSize + 16
+        let height = iconSize + 16 + (showsLabel ? 16 : 0)
+        return NSSize(width: width, height: height)
     }
 
     @objc private func handleClick() {

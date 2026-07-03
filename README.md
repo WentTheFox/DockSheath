@@ -20,7 +20,7 @@ Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad,
 ## Features
 
 - Taskbar docked to whichever screen edge the Dock is on (bottom, left, or right) with genuine screen-space reservation
-- Running windows grouped by app — click to activate/minimize, right-click to close
+- Running windows grouped by app — click to activate/minimize, right-click to close, with each button's label showing that window's title (or "AppName (N)" plus a tooltip listing every title when an app has several windows)
 - Pinned "quick launch" apps strip, separate from running windows
 - Start-menu-style searchable app launcher
 - Hand-editable JSON5 configuration (comments + trailing commas supported), live-reloaded on save
@@ -97,7 +97,8 @@ Pull requests welcome. Since DockSheath needs Accessibility access to do anythin
 
 - Single-display only for now — the taskbar appears on the main screen (multi-monitor support is planned)
 - Not distributed on the Mac App Store (DockSheath runs unsandboxed by necessity, since sandboxed apps can't control other apps' windows via the Accessibility API)
-- Window title/content thumbnails are not implemented yet
+- Window content thumbnails/previews are not implemented yet
+- Multiple windows for the same app currently share one taskbar button (`behavior.groupWindowsByApp` is reserved for a future ungrouped mode); hover the button to see every window's title
 
 ## License
 

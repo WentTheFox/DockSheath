@@ -37,6 +37,13 @@ public final class TaskbarViewController: NSViewController {
         didSet { applyTheme() }
     }
 
+    /// Whether every taskbar button shows a text label below its icon — for
+    /// running-window buttons, that label is the window's title (see
+    /// `RunningWindowsStripView.displayLabel(for:)`).
+    public var showAppLabels: Bool = true {
+        didSet { applyShowLabels() }
+    }
+
     public override func loadView() {
         view = NSView()
     }
@@ -96,6 +103,7 @@ public final class TaskbarViewController: NSViewController {
 
         applyOrientation()
         applyTheme()
+        applyShowLabels()
 
         startButton.onClick = { [weak self] in self?.toggleQuickLaunch() }
     }
@@ -123,6 +131,15 @@ public final class TaskbarViewController: NSViewController {
         startButton.applyTheme(theme)
         pinnedStrip.buttonTheme = theme
         runningStrip.buttonTheme = theme
+    }
+
+    /// Safe to call before `viewDidLoad()` runs, same as `applyTheme()`.
+    private func applyShowLabels() {
+        guard isViewLoaded else { return }
+
+        startButton.showsLabel = showAppLabels
+        pinnedStrip.showsLabels = showAppLabels
+        runningStrip.showsLabels = showAppLabels
     }
 
     private func applyOrientation() {

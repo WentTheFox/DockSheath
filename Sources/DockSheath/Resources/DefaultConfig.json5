@@ -41,7 +41,10 @@
     "theme": "auto", // "auto" | "light" | "dark"
     "accentColor": null, // e.g. "#FF6600" — used for the running-app highlight tint
     "iconSize": 32,
-    "showAppLabels": false,
+    // Shows a text label under each taskbar button — for running windows,
+    // that's the window's title (or "AppName (N)" when an app has multiple
+    // windows; hover to see each window's title in the tooltip).
+    "showAppLabels": true,
 
     // Colors for the taskbar's own background/border. Hex strings only
     // ("#RGB", "#RRGGBB", or "#RRGGBBAA"); leave a field null to follow the

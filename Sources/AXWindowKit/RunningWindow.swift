@@ -9,9 +9,10 @@ public struct RunningWindow: Identifiable {
     public let ownerAppName: String
     public let ownerBundleIdentifier: String?
     public let icon: NSImage?
-    /// Only populated when Screen Recording access has been granted;
-    /// `CGWindowListCopyWindowInfo` returns an empty title for other apps'
-    /// windows otherwise.
+    /// Read via `kAXTitleAttribute`, so this only needs Accessibility access
+    /// (not Screen Recording, unlike `CGWindowListCopyWindowInfo`'s window
+    /// name) — see `WindowEnumerationService`. `nil` if the window declines
+    /// to report a title via Accessibility.
     public let title: String?
     public let bounds: CGRect?
     public let isMinimized: Bool

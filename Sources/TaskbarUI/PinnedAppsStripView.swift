@@ -23,6 +23,10 @@ public final class PinnedAppsStripView: NSView {
         didSet { applyButtonTheme() }
     }
 
+    public var showsLabels: Bool = true {
+        didSet { rebuildButtons() }
+    }
+
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
@@ -66,6 +70,7 @@ public final class PinnedAppsStripView: NSView {
             let icon = NSWorkspace.shared.icon(forFile: entry.bundlePath)
             let name = (entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
             let button = TaskbarButton(icon: icon, title: name)
+            button.showsLabel = showsLabels
             button.applyTheme(buttonTheme)
             button.onClick = { [weak self] in self?.launch(entry) }
             button.onRightClick = { [weak self] in self?.showContextMenu(for: entry, from: button) }

@@ -132,7 +132,7 @@ public struct AppearanceConfig: Codable, Equatable {
         theme: String = "auto",
         accentColor: String? = nil,
         iconSize: Double = 32,
-        showAppLabels: Bool = false,
+        showAppLabels: Bool = true,
         taskbarColors: TaskbarColorOverrides = TaskbarColorOverrides(),
         buttonColors: ButtonColorOverrides = ButtonColorOverrides()
     ) {
@@ -153,7 +153,7 @@ public struct AppearanceConfig: Codable, Equatable {
         theme = try container.decodeIfPresent(String.self, forKey: .theme) ?? "auto"
         accentColor = try container.decodeIfPresent(String.self, forKey: .accentColor)
         iconSize = try container.decodeIfPresent(Double.self, forKey: .iconSize) ?? 32
-        showAppLabels = try container.decodeIfPresent(Bool.self, forKey: .showAppLabels) ?? false
+        showAppLabels = try container.decodeIfPresent(Bool.self, forKey: .showAppLabels) ?? true
         taskbarColors = try container.decodeIfPresent(TaskbarColorOverrides.self, forKey: .taskbarColors) ?? TaskbarColorOverrides()
         buttonColors = try container.decodeIfPresent(ButtonColorOverrides.self, forKey: .buttonColors) ?? ButtonColorOverrides()
     }

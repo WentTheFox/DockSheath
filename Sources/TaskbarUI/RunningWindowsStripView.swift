@@ -26,6 +26,10 @@ public final class RunningWindowsStripView: NSView {
         didSet { applyButtonTheme() }
     }
 
+    public var showsLabels: Bool = true {
+        didSet { rebuildButtons() }
+    }
+
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
@@ -96,13 +100,35 @@ public final class RunningWindowsStripView: NSView {
         let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
 
         for group in groups {
-            let button = TaskbarButton(icon: group.icon, title: group.appName)
+            let button = TaskbarButton(icon: group.icon, title: displayLabel(for: group))
+            button.toolTip = tooltipText(for: group)
+            button.showsLabel = showsLabels
             button.applyTheme(buttonTheme)
             button.isHighlighted = group.id == frontmostPID
             button.onClick = { [weak self] in self?.handleClick(group: group) }
             button.onRightClick = { [weak self] in self?.showContextMenu(for: group, from: button) }
             stackView.addArrangedSubview(button)
         }
+    }
+
+    /// A single window's title when there's only one, or "AppName (N)" when
+    /// the app has multiple windows grouped under this button — the
+    /// individual titles are still available via `tooltipText(for:)`.
+    private func displayLabel(for group: RunningAppGroup) -> String {
+        if group.windows.count == 1, let title = group.windows[0].title, !title.isEmpty {
+            return title
+        }
+        if group.windows.count > 1 {
+            return "\(group.appName) (\(group.windows.count))"
+        }
+        return group.appName
+    }
+
+    private func tooltipText(for group: RunningAppGroup) -> String {
+        guard group.windows.count > 1 else { return displayLabel(for: group) }
+        return group.windows
+            .map { $0.title?.isEmpty == false ? $0.title! : group.appName }
+            .joined(separator: "\n")
     }
 
     private func applyButtonTheme() {

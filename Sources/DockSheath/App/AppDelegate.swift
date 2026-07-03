@@ -14,6 +14,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
+        // Created up front, before permissions are even checked: with no
+        // Dock icon (.accessory) and no status item, closing the onboarding
+        // window would leave the app running with no way to reopen it or
+        // quit.
+        statusItemController = StatusItemController()
+
         ConfigStore.shared.onConfigChanged = { [weak self] config in
             self?.applyConfig(config)
         }
@@ -23,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if PermissionChecks.isAccessibilityTrusted {
             startCore()
         } else {
+            statusItemController?.showPendingSetup { [weak self] in self?.showOnboarding() }
             showOnboarding()
         }
     }
@@ -35,7 +42,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return text
     }
 
+    /// Reuses the existing onboarding window/controller if one's already
+    /// been created (e.g. re-shown via the status item's "Open Setup…" after
+    /// the user closed it) rather than creating a second one.
     private func showOnboarding() {
+        if let existing = onboardingWindowController {
+            existing.showAndActivate()
+            return
+        }
         let controller = PermissionsOnboardingWindowController { [weak self] in
             self?.startCore()
         }
@@ -54,8 +68,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         primaryInstance = primary
 
-        let statusItem = StatusItemController(overlayController: primary.overlay)
+        let statusItem = statusItemController ?? StatusItemController()
         statusItemController = statusItem
+        statusItem.showRunning(overlayController: primary.overlay)
         primary.overlay.onHealthChanged = { [weak statusItem] diagnosis in
             statusItem?.updateDockHealth(diagnosis)
         }

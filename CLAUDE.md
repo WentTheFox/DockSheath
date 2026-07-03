@@ -70,6 +70,6 @@ Config lives at `~/.config/docksheath/config.json5` and is live-reloaded via `Co
 
 ### CI/CD (`.github/workflows/`)
 
-Just one workflow, `build.yml` (runners pinned to specific action commit SHAs, kept current by `.github/dependabot.yml`): runs on push/PR to `main`, `swift build`, `swift test`, then an `xcodebuild -scheme DockSheath` sanity build.
+Just one workflow, `build.yml` (runners pinned to specific action commit SHAs, kept current by `.github/dependabot.yml`): runs on push/PR to `main`, with two jobs in parallel rather than one sequential job — `build-test` (`swift build`, `swift test`) and `xcodebuild-sanity` (`xcodebuild -scheme DockSheath`). They were split up because `xcodebuild` resolves the package into its own DerivedData rather than reusing `swift build`'s `.build` cache, so the two never shared build artifacts anyway — running them in parallel just gets both results in the time of the slower one instead of the sum of both, at no extra runner-minute cost.
 
 DockSheath does **not** ship pre-built binaries/releases — `release.yml` (tag-triggered) and `dev-release.yml` (auto pre-release per push to `main`) both existed earlier in the project's history and were deliberately removed; users build from source per the README's Installation section instead. If you're tempted to re-add release automation, that's a reversal of an explicit decision, not an oversight — confirm with the user first.

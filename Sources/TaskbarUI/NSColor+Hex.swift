@@ -41,4 +41,19 @@ extension NSColor {
             alpha: CGFloat(a) / 255
         )
     }
+
+    /// The inverse of `init(hexString:)` — `"#RRGGBB"`, or `"#RRGGBBAA"` when
+    /// the color isn't fully opaque. Used by the Settings UI to persist a
+    /// `ColorPicker`'s `Color` back into config as a hex string.
+    public var hexString: String {
+        let converted = usingColorSpace(.sRGB) ?? self
+        let r = Int((converted.redComponent * 255).rounded())
+        let g = Int((converted.greenComponent * 255).rounded())
+        let b = Int((converted.blueComponent * 255).rounded())
+        let a = Int((converted.alphaComponent * 255).rounded())
+        if a >= 255 {
+            return String(format: "#%02X%02X%02X", r, g, b)
+        }
+        return String(format: "#%02X%02X%02X%02X", r, g, b, a)
+    }
 }

@@ -24,7 +24,7 @@ With `behavior.showOnAllDisplays` enabled, DockSheath also renders a taskbar on 
 - Running windows grouped by app by default — click to activate/minimize, right-click to close, with each button's label showing that window's title (or "AppName (N)" plus a tooltip listing every title when an app has several windows); set `behavior.groupWindowsByApp` to `false` in config for one button per window instead
 - Pinned "quick launch" apps strip, separate from running windows
 - Start-menu-style searchable app launcher
-- Hand-editable JSON5 configuration (comments + trailing commas supported), live-reloaded on save
+- Hand-editable JSON5 configuration (comments + trailing commas supported), live-reloaded on save — or use the native **Settings…** window for the same config without hand-editing
 - Taskbar and button colors follow the system light/dark appearance by default, with per-element background/border/text overrides available in config
 - Toggle the taskbar via menu bar item or global hotkey to reveal the real Dock underneath
 - Optional taskbar on every other connected display too (`behavior.showOnAllDisplays`) — those screens have no real Dock reserving space for it, so DockSheath actively keeps windows there from sitting underneath it
@@ -68,7 +68,9 @@ DockSheath stores its config at:
 
 A commented default is generated on first run. It supports the full [JSON5 spec](https://spec.json5.org) — comments, trailing commas, unquoted keys, single-quoted strings, and more. Edits are picked up automatically while DockSheath is running — no restart needed.
 
-Note: pinning/unpinning an app from the taskbar UI rewrites the file as plain JSON and will remove any comments you've added — hand-edit comments back in afterward if you'd like to keep them.
+Most of the config below can also be edited from **Settings…** in the menu bar item — a native window covering behavior, appearance (theme, colors, icon size, the display-number badge, and the clock), secondary-display overrides, the show/hide hotkey (with a click-to-record shortcut field), and pinned apps. It reads and writes the same `config.json5`, so hand-editing still works for anything not yet exposed there, and either way of editing is picked up live by the other.
+
+Note: pinning/unpinning an app (from the taskbar UI or from Settings) rewrites the file as plain JSON and will remove any comments you've added — hand-edit comments back in afterward if you'd like to keep them.
 
 ### Display-number badge and clock
 
@@ -125,7 +127,7 @@ When `behavior.showOnAllDisplays` is enabled, the `secondaryDisplay` section let
 
 The codebase is split into focused Swift Package targets under `Sources/`:
 
-- `DockSheath` — app bootstrap, menu bar item, onboarding
+- `DockSheath` — app bootstrap, menu bar item, onboarding, and the Settings window
 - `DockOverlayKit` — the Dock-covering overlay window and screen-space-reservation geometry
 - `AXWindowKit` — window enumeration/control via the Accessibility API
 - `JSON5Config` — the JSON5 parser and config store

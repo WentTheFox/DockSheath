@@ -7,7 +7,7 @@ import JSON5Config
 /// recorder control. `NSEvent.keyCode` and Carbon's `RegisterEventHotKey`
 /// (see `GlobalHotKey`) share the same virtual-keycode numbering, so the
 /// captured code can be stored directly with no translation.
-fileprivate final class KeyCaptureNSView: NSView {
+final class KeyCaptureNSView: NSView {
     var onCapture: ((HotKeyBinding) -> Void)?
     var isRecording = false {
         didSet {
@@ -47,7 +47,7 @@ struct ShortcutRecorderView: NSViewRepresentable {
     @Binding var isRecording: Bool
     var onCapture: (HotKeyBinding) -> Void
 
-    fileprivate func makeNSView(context: Context) -> KeyCaptureNSView {
+    func makeNSView(context: Context) -> KeyCaptureNSView {
         let view = KeyCaptureNSView()
         view.onCapture = { binding in
             onCapture(binding)
@@ -56,7 +56,7 @@ struct ShortcutRecorderView: NSViewRepresentable {
         return view
     }
 
-    fileprivate func updateNSView(_ nsView: KeyCaptureNSView, context: Context) {
+    func updateNSView(_ nsView: KeyCaptureNSView, context: Context) {
         nsView.isRecording = isRecording
     }
 }

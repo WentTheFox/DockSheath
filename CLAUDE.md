@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-DockSheath is a free/open-source native macOS taskbar app (Swift, AppKit + some SwiftUI) — a FOSS alternative to uBar. It docks to whichever edge of the screen the real Dock is on, lists/manages running app windows, and adds a pinned quick-launch strip and a searchable app launcher. See `README.md` for the full feature/user-facing description.
+DockSheath is a free/open-source native macOS taskbar app (Swift, AppKit + some SwiftUI) — a FOSS alternative to uBar. It docks to whichever edge of the screen the real Dock is on, lists/manages running app windows, and adds a pinned quick-launch strip with a menu for jumping straight to any pinned app. See `README.md` for the full feature/user-facing description.
 
 ## Build & test
 

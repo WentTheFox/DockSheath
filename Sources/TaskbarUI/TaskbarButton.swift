@@ -144,6 +144,23 @@ public final class TaskbarButton: NSView {
     /// is the correct place, not on `OverlayWindow` itself.
     public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    /// AppKit consults `acceptsFirstMouse(for:)` on whichever view is
+    /// actually hit-tested — the deepest subview under the cursor — not on
+    /// an ancestor that happens to override it. Since `imageView`/`label`
+    /// fill most of this button's clickable area, most clicks were being
+    /// hit-tested to one of *them* (plain `NSView`s that don't override
+    /// `acceptsFirstMouse`), silently defeating the override above. Neither
+    /// subview needs its own hit-testing — all interaction is handled here
+    /// via the gesture recognizer and `rightMouseDown` — so every point
+    /// within bounds resolves directly to this view instead.
+    public override func hitTest(_ point: NSPoint) -> NSView? {
+        // `point` arrives in the superview's coordinate space (that's what
+        // every `NSView.hitTest(_:)` receives), not this view's own bounds —
+        // comparing against `bounds` directly here would silently make the
+        // whole button unclickable whenever its frame origin isn't (0, 0).
+        frame.contains(point) ? self : nil
+    }
+
     /// Applies a resolved `TaskbarTheme`'s button colors. `nil` fields in the
     /// theme reset this button back to its transparent, system-colored
     /// default rather than leaving a stale override in place.

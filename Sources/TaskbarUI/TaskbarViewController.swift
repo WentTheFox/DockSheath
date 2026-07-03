@@ -27,13 +27,15 @@ public final class TaskbarViewController: NSViewController {
     private var indicatorStack: NSStackView!
     private var stackConstraints: [NSLayoutConstraint] = []
     private var indicatorConstraints: [NSLayoutConstraint] = []
-    private var quickLaunchController: QuickLaunchWindowController?
     private var currentEdge: DockEdge = .bottom
 
     public var pinnedApps: [PinnedAppEntry] = [] {
         didSet { pinnedStrip.pinnedApps = pinnedApps }
     }
     public var onPinnedAppsChanged: (([PinnedAppEntry]) -> Void)?
+    /// Opens Settings to the Pinned Apps tab, from the Quick Launch menu's
+    /// "Manage Pinned Apps…" item.
+    public var onManagePinnedApps: (() -> Void)?
 
     /// The resolved appearance/color theme applied to the taskbar's own
     /// background/border and passed down to every button. Defaults to
@@ -84,6 +86,13 @@ public final class TaskbarViewController: NSViewController {
         pinnedStrip.onUnpin = { [weak self] entry in
             guard let self else { return }
             pinnedApps.removeAll { $0.id == entry.id }
+            onPinnedAppsChanged?(pinnedApps)
+        }
+
+        runningStrip.onPin = { [weak self] entry in
+            guard let self else { return }
+            guard !pinnedApps.contains(where: { $0.bundlePath == entry.bundlePath }) else { return }
+            pinnedApps.append(entry)
             onPinnedAppsChanged?(pinnedApps)
         }
     }
@@ -153,7 +162,7 @@ public final class TaskbarViewController: NSViewController {
         updateDisplayNumberIndicator()
         applyClockConfig()
 
-        startButton.onClick = { [weak self] in self?.toggleQuickLaunch() }
+        startButton.onClick = { [weak self] in self?.showQuickLaunchMenu() }
     }
 
     /// Applies `theme` to the taskbar's own background/border and to every
@@ -271,45 +280,46 @@ public final class TaskbarViewController: NSViewController {
         NSLayoutConstraint.activate(indicatorConstraints)
     }
 
-    private func toggleQuickLaunch() {
-        if let controller = quickLaunchController, controller.isVisible {
-            controller.hide()
-            return
+    /// The Start button's menu: every pinned app (click to launch), plus a
+    /// way to add/remove pins. `NSMenu` handles keeping itself on-screen
+    /// regardless of which screen edge the taskbar is on, so unlike the
+    /// search panel this replaced, there's no manual anchor-point/edge math
+    /// needed here.
+    private func showQuickLaunchMenu() {
+        let menu = NSMenu()
+
+        if pinnedApps.isEmpty {
+            let emptyItem = NSMenuItem(title: "No Pinned Apps", action: nil, keyEquivalent: "")
+            emptyItem.isEnabled = false
+            menu.addItem(emptyItem)
+        } else {
+            for entry in pinnedApps {
+                let title = (entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+                let item = NSMenuItem(title: title, action: #selector(launchPinnedAppMenuAction(_:)), keyEquivalent: "")
+                item.target = self
+                item.image = NSWorkspace.shared.icon(forFile: entry.bundlePath)
+                item.representedObject = entry
+                menu.addItem(item)
+            }
         }
 
-        let controller = QuickLaunchWindowController(
-            onLaunch: { [weak self] app in self?.launch(app) },
-            onPin: { [weak self] app in self?.pin(app) }
-        )
-        quickLaunchController = controller
+        menu.addItem(.separator())
+        let manageItem = NSMenuItem(title: "Manage Pinned Apps…", action: #selector(managePinnedAppsMenuAction), keyEquivalent: "")
+        manageItem.target = self
+        menu.addItem(manageItem)
 
-        guard let window = view.window else { return }
-        let buttonFrameInWindow = startButton.convert(startButton.bounds, to: nil)
-        let screenFrame = window.convertToScreen(buttonFrameInWindow)
-
-        let anchorPoint: NSPoint
-        switch currentEdge {
-        case .bottom:
-            anchorPoint = NSPoint(x: screenFrame.midX, y: screenFrame.maxY)
-        case .left:
-            anchorPoint = NSPoint(x: screenFrame.maxX, y: screenFrame.midY)
-        case .right:
-            anchorPoint = NSPoint(x: screenFrame.minX, y: screenFrame.midY)
-        }
-        controller.show(near: anchorPoint, dockEdge: currentEdge)
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: startButton.bounds.height), in: startButton)
     }
 
-    private func launch(_ app: InstalledApp) {
+    @objc private func launchPinnedAppMenuAction(_ sender: NSMenuItem) {
+        guard let entry = sender.representedObject as? PinnedAppEntry else { return }
         NSWorkspace.shared.openApplication(
-            at: URL(fileURLWithPath: app.bundlePath),
+            at: URL(fileURLWithPath: entry.bundlePath),
             configuration: NSWorkspace.OpenConfiguration()
         )
-        quickLaunchController?.hide()
     }
 
-    private func pin(_ app: InstalledApp) {
-        guard !pinnedApps.contains(where: { $0.bundlePath == app.bundlePath }) else { return }
-        pinnedApps.append(PinnedAppEntry(bundlePath: app.bundlePath, bundleIdentifier: app.bundleIdentifier))
-        onPinnedAppsChanged?(pinnedApps)
+    @objc private func managePinnedAppsMenuAction() {
+        onManagePinnedApps?()
     }
 }

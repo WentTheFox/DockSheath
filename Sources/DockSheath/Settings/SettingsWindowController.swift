@@ -24,7 +24,10 @@ final class SettingsWindowController: NSWindowController {
         window.contentViewController = NSHostingController(rootView: SettingsView(model: model))
     }
 
-    func showAndActivate() {
+    func showAndActivate(selecting tab: SettingsTab? = nil) {
+        if let tab {
+            model.selectedTab = tab
+        }
         NSApp.activate(ignoringOtherApps: true)
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)

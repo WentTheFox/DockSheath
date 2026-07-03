@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue)
 
-A free, open-source, native Windows-style taskbar for macOS — a FOSS alternative to uBar and similar Dock replacements. DockSheath docks at the bottom of the screen, lists and manages running app windows, and adds a pinned quick-launch strip and a start-menu-style app launcher.
+A free, open-source, native Windows-style taskbar for macOS — a FOSS alternative to uBar and similar Dock replacements. DockSheath docks at the bottom of the screen, lists and manages running app windows, and adds a pinned quick-launch strip with a menu for jumping straight to any pinned app.
 
 The project name is inspired by the concept of hiding the dock when not needed (like sheathing a sword), while also being a reflecton of my personal opinion of MacOS when read aloud quickly. To some, it may also be their opinion of a purely vibe-coded project, which this very much is.
 
@@ -22,8 +22,8 @@ With `behavior.showOnAllDisplays` enabled, DockSheath also renders a taskbar on 
 
 - Taskbar docked to whichever screen edge the Dock is on (bottom, left, or right) with genuine screen-space reservation
 - Running windows grouped by app by default — click to activate/minimize, right-click to close, with each button's label showing that window's title (or "AppName (N)" plus a tooltip listing every title when an app has several windows); set `behavior.groupWindowsByApp` to `false` in config for one button per window instead
-- Pinned "quick launch" apps strip, separate from running windows
-- Start-menu-style searchable app launcher
+- Pinned "quick launch" apps strip, separate from running windows — its Start button opens a small menu listing every pinned app for one-click launching, plus "Manage Pinned Apps…" to add/remove them
+- Pin a running app straight from its right-click menu (alongside Minimize/Close), or unpin from a pinned app's own right-click menu — no need to dig through Settings for the common case
 - Hand-editable JSON5 configuration (comments + trailing commas supported), live-reloaded on save — or use the native **Settings…** window for the same config without hand-editing
 - Taskbar and button colors follow the system light/dark appearance by default, with per-element background/border/text overrides available in config
 - Toggle the taskbar via menu bar item or global hotkey to reveal the real Dock underneath
@@ -131,7 +131,7 @@ The codebase is split into focused Swift Package targets under `Sources/`:
 - `DockOverlayKit` — the Dock-covering overlay window and screen-space-reservation geometry
 - `AXWindowKit` — window enumeration/control via the Accessibility API
 - `JSON5Config` — the JSON5 parser and config store
-- `TaskbarUI` — taskbar chrome, pinned apps, and the quick-launch panel
+- `TaskbarUI` — taskbar chrome, pinned apps, and the Quick Launch menu
 - `GlobalHotKey` — the systemwide show/hide shortcut
 
 Run `swift test` to run the `JSON5Config`/`AXWindowKit` test suites.

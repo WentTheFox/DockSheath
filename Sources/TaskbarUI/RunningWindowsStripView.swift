@@ -1,5 +1,6 @@
 import AppKit
 import AXWindowKit
+import JSON5Config
 
 /// The taskbar strip listing running application windows — grouped one
 /// button per app by default, or one button per window when `groupByApp` is
@@ -37,6 +38,11 @@ public final class RunningWindowsStripView: NSView {
     public var groupByApp: Bool = true {
         didSet { rebuildButtons() }
     }
+
+    /// Requests pinning the given app to the taskbar, from a running
+    /// window/group's right-click menu. The caller (`TaskbarViewController`)
+    /// owns the actual pinned-apps list and is responsible for de-duplicating.
+    public var onPin: ((PinnedAppEntry) -> Void)?
 
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -179,6 +185,9 @@ public final class RunningWindowsStripView: NSView {
             .representedObject = group
         menu.addItem(withTitle: "Close", action: #selector(closeMenuAction(_:)), keyEquivalent: "")
             .representedObject = group
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinGroupMenuAction(_:)), keyEquivalent: "")
+            .representedObject = group
         for item in menu.items {
             item.target = self
         }
@@ -195,6 +204,11 @@ public final class RunningWindowsStripView: NSView {
         guard let group = sender.representedObject as? RunningAppGroup else { return }
         group.windows.forEach(AccessibilityWindowController.close)
         refresh()
+    }
+
+    @objc private func pinGroupMenuAction(_ sender: NSMenuItem) {
+        guard let group = sender.representedObject as? RunningAppGroup else { return }
+        pin(bundleIdentifier: group.bundleIdentifier)
     }
 
     // MARK: - Ungrouped (per-window) actions
@@ -216,6 +230,9 @@ public final class RunningWindowsStripView: NSView {
             .representedObject = window
         menu.addItem(withTitle: "Close", action: #selector(closeWindowMenuAction(_:)), keyEquivalent: "")
             .representedObject = window
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinWindowMenuAction(_:)), keyEquivalent: "")
+            .representedObject = window
         for item in menu.items {
             item.target = self
         }
@@ -232,5 +249,19 @@ public final class RunningWindowsStripView: NSView {
         guard let window = sender.representedObject as? RunningWindow else { return }
         AccessibilityWindowController.close(window)
         refresh()
+    }
+
+    @objc private func pinWindowMenuAction(_ sender: NSMenuItem) {
+        guard let window = sender.representedObject as? RunningWindow else { return }
+        pin(bundleIdentifier: window.ownerBundleIdentifier)
+    }
+
+    /// Resolves a bundle identifier (all a running window/group carries) to
+    /// an installed app's on-disk path so a `PinnedAppEntry` (which needs a
+    /// `bundlePath`) can be constructed from it.
+    private func pin(bundleIdentifier: String?) {
+        guard let bundleIdentifier,
+              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
+        onPin?(PinnedAppEntry(bundlePath: url.path, bundleIdentifier: bundleIdentifier))
     }
 }

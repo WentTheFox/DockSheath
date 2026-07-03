@@ -3,10 +3,11 @@ import JSON5Config
 import DockOverlayKit
 
 /// Composes the taskbar's layout: Start button → pinned-apps strip →
-/// separator → running-windows strip (grouped by owning app). Lays out
-/// horizontally when the Dock (and therefore the taskbar) is at the bottom
-/// of the screen, or vertically when it's on the left or right — following
-/// `updateLayout(for:)` calls driven by `OverlayWindowController`.
+/// separator → running-windows strip (grouped by owning app, unless
+/// `groupWindowsByApp` is false). Lays out horizontally when the Dock (and
+/// therefore the taskbar) is at the bottom of the screen, or vertically when
+/// it's on the left or right — following `updateLayout(for:)` calls driven
+/// by `OverlayWindowController`.
 public final class TaskbarViewController: NSViewController {
     private let startButton = TaskbarButton(
         icon: NSImage(systemSymbolName: "square.grid.2x2.fill", accessibilityDescription: "Quick Launch"),
@@ -42,6 +43,12 @@ public final class TaskbarViewController: NSViewController {
     /// `RunningWindowsStripView.displayLabel(for:)`).
     public var showAppLabels: Bool = true {
         didSet { applyShowLabels() }
+    }
+
+    /// Whether running windows are grouped one-button-per-app (the default)
+    /// or given one button per individual window.
+    public var groupWindowsByApp: Bool = true {
+        didSet { applyGroupWindowsByApp() }
     }
 
     public override func loadView() {
@@ -104,6 +111,7 @@ public final class TaskbarViewController: NSViewController {
         applyOrientation()
         applyTheme()
         applyShowLabels()
+        applyGroupWindowsByApp()
 
         startButton.onClick = { [weak self] in self?.toggleQuickLaunch() }
     }
@@ -140,6 +148,12 @@ public final class TaskbarViewController: NSViewController {
         startButton.showsLabel = showAppLabels
         pinnedStrip.showsLabels = showAppLabels
         runningStrip.showsLabels = showAppLabels
+    }
+
+    /// Safe to call before `viewDidLoad()` runs, same as `applyTheme()`.
+    private func applyGroupWindowsByApp() {
+        guard isViewLoaded else { return }
+        runningStrip.groupByApp = groupWindowsByApp
     }
 
     private func applyOrientation() {
@@ -187,7 +201,7 @@ public final class TaskbarViewController: NSViewController {
         let anchorPoint: NSPoint
         switch currentEdge {
         case .bottom:
-            anchorPoint = NSPoint(x: screenFrame.midX, y: screenFrame.maxY)
+            anchorPoint = NSPoint(x: screenFrame.midX, y: screenFrame.midY)
         case .left:
             anchorPoint = NSPoint(x: screenFrame.maxX, y: screenFrame.midY)
         case .right:

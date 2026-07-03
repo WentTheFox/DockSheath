@@ -1,8 +1,9 @@
 import AppKit
 import AXWindowKit
 
-/// The taskbar strip listing running application windows, grouped by owning
-/// app. Refreshes on app launch/terminate/activate notifications plus a
+/// The taskbar strip listing running application windows — grouped one
+/// button per app by default, or one button per window when `groupByApp` is
+/// false. Refreshes on app launch/terminate/activate notifications plus a
 /// coarse fallback poll for same-app window open/close (a fully
 /// AXObserver-driven live refresh is a post-MVP improvement).
 public final class RunningWindowsStripView: NSView {
@@ -27,6 +28,13 @@ public final class RunningWindowsStripView: NSView {
     }
 
     public var showsLabels: Bool = true {
+        didSet { rebuildButtons() }
+    }
+
+    /// When true (the default), windows are grouped into one button per app.
+    /// When false, every window gets its own button/title, so each window
+    /// can be activated, minimized, or closed individually.
+    public var groupByApp: Bool = true {
         didSet { rebuildButtons() }
     }
 
@@ -99,15 +107,30 @@ public final class RunningWindowsStripView: NSView {
 
         let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
 
-        for group in groups {
-            let button = TaskbarButton(icon: group.icon, title: displayLabel(for: group))
-            button.toolTip = tooltipText(for: group)
-            button.showsLabel = showsLabels
-            button.applyTheme(buttonTheme)
-            button.isHighlighted = group.id == frontmostPID
-            button.onClick = { [weak self] in self?.handleClick(group: group) }
-            button.onRightClick = { [weak self] in self?.showContextMenu(for: group, from: button) }
-            stackView.addArrangedSubview(button)
+        if groupByApp {
+            for group in groups {
+                let button = TaskbarButton(icon: group.icon, title: displayLabel(for: group))
+                button.toolTip = tooltipText(for: group)
+                button.showsLabel = showsLabels
+                button.applyTheme(buttonTheme)
+                button.isHighlighted = group.id == frontmostPID
+                button.onClick = { [weak self] in self?.handleClick(group: group) }
+                button.onRightClick = { [weak self] in self?.showContextMenu(for: group, from: button) }
+                stackView.addArrangedSubview(button)
+            }
+        } else {
+            for group in groups {
+                for window in group.windows {
+                    let title = window.title?.isEmpty == false ? window.title! : group.appName
+                    let button = TaskbarButton(icon: group.icon, title: title)
+                    button.showsLabel = showsLabels
+                    button.applyTheme(buttonTheme)
+                    button.isHighlighted = group.id == frontmostPID
+                    button.onClick = { [weak self] in self?.handleClick(window: window) }
+                    button.onRightClick = { [weak self] in self?.showWindowContextMenu(for: window, from: button) }
+                    stackView.addArrangedSubview(button)
+                }
+            }
         }
     }
 
@@ -171,6 +194,43 @@ public final class RunningWindowsStripView: NSView {
     @objc private func closeMenuAction(_ sender: NSMenuItem) {
         guard let group = sender.representedObject as? RunningAppGroup else { return }
         group.windows.forEach(AccessibilityWindowController.close)
+        refresh()
+    }
+
+    // MARK: - Ungrouped (per-window) actions
+
+    private func handleClick(window: RunningWindow) {
+        let isFrontmost = window.pid == NSWorkspace.shared.frontmostApplication?.processIdentifier
+
+        if isFrontmost && !window.isMinimized {
+            AccessibilityWindowController.minimize(window)
+        } else {
+            AccessibilityWindowController.activate(window)
+        }
+        refresh()
+    }
+
+    private func showWindowContextMenu(for window: RunningWindow, from view: NSView) {
+        let menu = NSMenu()
+        menu.addItem(withTitle: "Minimize", action: #selector(minimizeWindowMenuAction(_:)), keyEquivalent: "")
+            .representedObject = window
+        menu.addItem(withTitle: "Close", action: #selector(closeWindowMenuAction(_:)), keyEquivalent: "")
+            .representedObject = window
+        for item in menu.items {
+            item.target = self
+        }
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: view.bounds.height), in: view)
+    }
+
+    @objc private func minimizeWindowMenuAction(_ sender: NSMenuItem) {
+        guard let window = sender.representedObject as? RunningWindow else { return }
+        AccessibilityWindowController.minimize(window)
+        refresh()
+    }
+
+    @objc private func closeWindowMenuAction(_ sender: NSMenuItem) {
+        guard let window = sender.representedObject as? RunningWindow else { return }
+        AccessibilityWindowController.close(window)
         refresh()
     }
 }

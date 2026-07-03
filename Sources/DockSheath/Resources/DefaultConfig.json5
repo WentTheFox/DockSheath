@@ -33,6 +33,8 @@
   "behavior": {
     "autoHideOnMouseLeave": false,
     "showOnAllDisplays": false,
+    // true: one taskbar button per app, covering all of its windows.
+    // false: one button per individual window, each with its own title.
     "groupWindowsByApp": true,
     "refreshIntervalMs": 1500,
   },

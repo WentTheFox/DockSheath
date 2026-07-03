@@ -75,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyConfig(_ config: TaskbarConfig) {
         taskbarViewController?.theme = TaskbarTheme.resolve(config.appearance)
         taskbarViewController?.showAppLabels = config.appearance.showAppLabels
+        taskbarViewController?.groupWindowsByApp = config.behavior.groupWindowsByApp
         taskbarViewController?.pinnedApps = config.pinnedApps
         overlayController?.sizeOverride = config.taskbar.sizeOverride.map { CGFloat($0) }
         registerHotKey(binding: config.hotkeys.toggleVisibility)

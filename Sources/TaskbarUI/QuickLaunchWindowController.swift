@@ -5,13 +5,13 @@ import DockOverlayKit
 /// A `.nonactivatingPanel` doesn't bring the owning app forward just by
 /// being clicked — by design, so an accessory panel like this doesn't steal
 /// focus from whatever app the user was using. But combined with
-/// `NSWindow`'s default `acceptsFirstMouse(for:)` (false), a click landing
+/// `NSView`'s default `acceptsFirstMouse(for:)` (false), a click landing
 /// before the panel is actually key only orders it front/key without
 /// delivering that click to whatever's underneath — e.g. the search field —
-/// so the user's first click appears to do nothing. Since this panel only
-/// ever hosts DockSheath's own quick-launch UI, there's no reason a first
-/// click shouldn't act on it directly.
-private final class QuickLaunchPanel: NSPanel {
+/// so the user's first click appears to do nothing. `acceptsFirstMouse(for:)`
+/// lives on `NSView`, not `NSWindow`/`NSPanel`, so it has to be overridden on
+/// the hosting view itself rather than the panel.
+private final class AcceptsFirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
@@ -23,17 +23,22 @@ public final class QuickLaunchWindowController: NSWindowController {
 
     public init(onLaunch: @escaping (InstalledApp) -> Void, onPin: ((InstalledApp) -> Void)? = nil) {
         let apps = InstalledAppsIndex.scan()
-        let hostingController = NSHostingController(
+        let hostingView = AcceptsFirstMouseHostingView(
             rootView: QuickLaunchSearchView(allApps: apps, onLaunch: onLaunch, onPin: onPin)
         )
 
-        let panel = QuickLaunchPanel(
+        let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 420, height: 420),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        panel.contentViewController = hostingController
+        // Bypassing NSHostingController (which wires this up for free) means
+        // doing it ourselves: without an autoresizing mask, the content view
+        // would keep its initial frame instead of tracking the panel's
+        // frame, which show(near:dockEdge:) changes on every reveal.
+        hostingView.autoresizingMask = [.width, .height]
+        panel.contentView = hostingView
         panel.isFloatingPanel = true
         panel.level = .popUpMenu
         panel.hasShadow = true

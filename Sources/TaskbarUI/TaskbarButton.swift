@@ -134,6 +134,16 @@ public final class TaskbarButton: NSView {
         onRightClick?()
     }
 
+    /// Without this, a click while DockSheath isn't the active app (the
+    /// common case — the user is normally focused on whatever app they're
+    /// switching away from) only activates/orders the overlay window front;
+    /// the click itself isn't delivered to the gesture recognizer, so
+    /// activating a taskbar button takes a first "wasted" click and a
+    /// second real one. `acceptsFirstMouse(for:)` lives on `NSView`, not
+    /// `NSWindow` — overriding it here (the view that's actually clicked)
+    /// is the correct place, not on `OverlayWindow` itself.
+    public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
     /// Applies a resolved `TaskbarTheme`'s button colors. `nil` fields in the
     /// theme reset this button back to its transparent, system-colored
     /// default rather than leaving a stale override in place.

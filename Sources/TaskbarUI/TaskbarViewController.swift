@@ -15,6 +15,7 @@ public final class TaskbarViewController: NSViewController {
     private let pinnedStrip = PinnedAppsStripView(frame: .zero)
     private let runningStrip = RunningWindowsStripView(frame: .zero)
     private let separator = NSBox()
+    private let backgroundVisualEffect = NSVisualEffectView()
     private var separatorWidthConstraint: NSLayoutConstraint!
     private var separatorHeightConstraint: NSLayoutConstraint!
     private var stack: NSStackView!
@@ -26,6 +27,15 @@ public final class TaskbarViewController: NSViewController {
         didSet { pinnedStrip.pinnedApps = pinnedApps }
     }
     public var onPinnedAppsChanged: (([PinnedAppEntry]) -> Void)?
+
+    /// The resolved appearance/color theme applied to the taskbar's own
+    /// background/border and passed down to every button. Defaults to
+    /// `.standard`, which follows the system light/dark appearance and
+    /// accent color with no persistent button fill — matching the look
+    /// before per-element color overrides existed.
+    public var theme: TaskbarTheme = .standard {
+        didSet { applyTheme() }
+    }
 
     public override func loadView() {
         view = NSView()
@@ -57,6 +67,22 @@ public final class TaskbarViewController: NSViewController {
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.clear.cgColor
 
+        // Default background: a system vibrancy material, which automatically
+        // tracks light/dark appearance with zero configuration. Swapped for a
+        // solid custom fill in applyTheme() when the user sets an explicit
+        // taskbarColors.background override.
+        backgroundVisualEffect.material = .menu
+        backgroundVisualEffect.blendingMode = .behindWindow
+        backgroundVisualEffect.state = .active
+        backgroundVisualEffect.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(backgroundVisualEffect)
+        NSLayoutConstraint.activate([
+            backgroundVisualEffect.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            backgroundVisualEffect.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            backgroundVisualEffect.topAnchor.constraint(equalTo: view.topAnchor),
+            backgroundVisualEffect.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+
         separator.boxType = .separator
         separator.translatesAutoresizingMaskIntoConstraints = false
         separatorWidthConstraint = separator.widthAnchor.constraint(equalToConstant: 1)
@@ -69,8 +95,34 @@ public final class TaskbarViewController: NSViewController {
         view.addSubview(stack)
 
         applyOrientation()
+        applyTheme()
 
         startButton.onClick = { [weak self] in self?.toggleQuickLaunch() }
+    }
+
+    /// Applies `theme` to the taskbar's own background/border and to every
+    /// button (Start, pinned, running). Safe to call before `viewDidLoad()`
+    /// runs — it's a no-op until `setUpLayout()` has created
+    /// `backgroundVisualEffect`.
+    private func applyTheme() {
+        guard isViewLoaded else { return }
+
+        view.appearance = theme.appearance
+
+        if let background = theme.taskbarBackground {
+            backgroundVisualEffect.isHidden = true
+            view.layer?.backgroundColor = background.cgColor
+        } else {
+            backgroundVisualEffect.isHidden = false
+            view.layer?.backgroundColor = NSColor.clear.cgColor
+        }
+
+        view.layer?.borderColor = theme.taskbarBorder?.cgColor
+        view.layer?.borderWidth = theme.taskbarBorder != nil ? 1 : 0
+
+        startButton.applyTheme(theme)
+        pinnedStrip.buttonTheme = theme
+        runningStrip.buttonTheme = theme
     }
 
     private func applyOrientation() {

@@ -11,6 +11,22 @@ public final class TaskbarButton: NSView {
         didSet { needsDisplay = true }
     }
 
+    /// `nil` means "no persistent fill" — the button stays transparent
+    /// except for the highlight tint, matching the default system look.
+    public var backgroundColor: NSColor? {
+        didSet { needsDisplay = true }
+    }
+    /// `nil` means "no border drawn".
+    public var borderColor: NSColor? {
+        didSet { needsDisplay = true }
+    }
+    public var highlightColor: NSColor = .controlAccentColor {
+        didSet { needsDisplay = true }
+    }
+    public var textColor: NSColor = .labelColor {
+        didSet { label.textColor = textColor }
+    }
+
     private let imageView: NSImageView
     private let label: NSTextField
     public var showsLabel: Bool = false {
@@ -65,11 +81,31 @@ public final class TaskbarButton: NSView {
         onRightClick?()
     }
 
+    /// Applies a resolved `TaskbarTheme`'s button colors. `nil` fields in the
+    /// theme reset this button back to its transparent, system-colored
+    /// default rather than leaving a stale override in place.
+    public func applyTheme(_ theme: TaskbarTheme) {
+        backgroundColor = theme.buttonBackground
+        borderColor = theme.buttonBorder
+        textColor = theme.buttonText ?? .labelColor
+        highlightColor = theme.buttonHighlight
+    }
+
     public override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        guard isHighlighted else { return }
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 6, yRadius: 6)
-        NSColor.controlAccentColor.withAlphaComponent(0.25).setFill()
-        path.fill()
+        if let backgroundColor {
+            backgroundColor.setFill()
+            path.fill()
+        }
+        if isHighlighted {
+            highlightColor.withAlphaComponent(0.25).setFill()
+            path.fill()
+        }
+        if let borderColor {
+            path.lineWidth = 1
+            borderColor.setStroke()
+            path.stroke()
+        }
     }
 }

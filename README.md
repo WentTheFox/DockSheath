@@ -24,6 +24,7 @@ Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad,
 - Pinned "quick launch" apps strip, separate from running windows
 - Start-menu-style searchable app launcher
 - Hand-editable JSON5 configuration (comments + trailing commas supported), live-reloaded on save
+- Taskbar and button colors follow the system light/dark appearance by default, with per-element background/border/text overrides available in config
 - Toggle the taskbar via menu bar item or global hotkey to reveal the real Dock underneath
 
 ## Requirements

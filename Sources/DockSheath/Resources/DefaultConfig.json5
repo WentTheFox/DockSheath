@@ -39,8 +39,24 @@
 
   "appearance": {
     "theme": "auto", // "auto" | "light" | "dark"
-    "accentColor": null,
+    "accentColor": null, // e.g. "#FF6600" — used for the running-app highlight tint
     "iconSize": 32,
     "showAppLabels": false,
+
+    // Colors for the taskbar's own background/border. Hex strings only
+    // ("#RGB", "#RRGGBB", or "#RRGGBBAA"); leave a field null to follow the
+    // system light/dark appearance instead of a fixed color.
+    "taskbarColors": {
+      "background": null,
+      "border": null,
+    },
+
+    // Colors for the taskbar buttons (Quick Launch, pinned apps, running
+    // windows). Same hex format and null-means-system-default rules apply.
+    "buttonColors": {
+      "background": null,
+      "border": null,
+      "text": null,
+    },
   },
 }

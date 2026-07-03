@@ -52,6 +52,26 @@ final class ConfigSchemaTests: XCTestCase {
         XCTAssertEqual(config.appearance.iconSize, 32)
     }
 
+    func testParsesTaskbarAndButtonColorOverrides() throws {
+        let text = """
+        {
+          appearance: {
+            accentColor: '#FF6600',
+            taskbarColors: { background: '#1E1E1EDD', border: null },
+            buttonColors: { background: null, border: '#333333', text: '#FFFFFF' },
+          },
+        }
+        """
+
+        let config = try TaskbarConfig.parse(json5: text)
+        XCTAssertEqual(config.appearance.accentColor, "#FF6600")
+        XCTAssertEqual(config.appearance.taskbarColors.background, "#1E1E1EDD")
+        XCTAssertNil(config.appearance.taskbarColors.border)
+        XCTAssertNil(config.appearance.buttonColors.background)
+        XCTAssertEqual(config.appearance.buttonColors.border, "#333333")
+        XCTAssertEqual(config.appearance.buttonColors.text, "#FFFFFF")
+    }
+
     func testDefaultsApplyForMissingOptionalFields() throws {
         let text = "{ \"schemaVersion\": 1 }"
         let config = try TaskbarConfig.parse(json5: text)

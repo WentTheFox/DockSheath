@@ -22,6 +22,10 @@ public final class RunningWindowsStripView: NSView {
         }
     }
 
+    public var buttonTheme: TaskbarTheme = .standard {
+        didSet { applyButtonTheme() }
+    }
+
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
@@ -93,10 +97,17 @@ public final class RunningWindowsStripView: NSView {
 
         for group in groups {
             let button = TaskbarButton(icon: group.icon, title: group.appName)
+            button.applyTheme(buttonTheme)
             button.isHighlighted = group.id == frontmostPID
             button.onClick = { [weak self] in self?.handleClick(group: group) }
             button.onRightClick = { [weak self] in self?.showContextMenu(for: group, from: button) }
             stackView.addArrangedSubview(button)
+        }
+    }
+
+    private func applyButtonTheme() {
+        for case let button as TaskbarButton in stackView.arrangedSubviews {
+            button.applyTheme(buttonTheme)
         }
     }
 

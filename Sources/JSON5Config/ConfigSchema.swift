@@ -125,21 +125,27 @@ public struct AppearanceConfig: Codable, Equatable {
     public var accentColor: String?
     public var iconSize: Double
     public var showAppLabels: Bool
+    public var taskbarColors: TaskbarColorOverrides
+    public var buttonColors: ButtonColorOverrides
 
     public init(
         theme: String = "auto",
         accentColor: String? = nil,
         iconSize: Double = 32,
-        showAppLabels: Bool = false
+        showAppLabels: Bool = false,
+        taskbarColors: TaskbarColorOverrides = TaskbarColorOverrides(),
+        buttonColors: ButtonColorOverrides = ButtonColorOverrides()
     ) {
         self.theme = theme
         self.accentColor = accentColor
         self.iconSize = iconSize
         self.showAppLabels = showAppLabels
+        self.taskbarColors = taskbarColors
+        self.buttonColors = buttonColors
     }
 
     private enum CodingKeys: String, CodingKey {
-        case theme, accentColor, iconSize, showAppLabels
+        case theme, accentColor, iconSize, showAppLabels, taskbarColors, buttonColors
     }
 
     public init(from decoder: Decoder) throws {
@@ -148,6 +154,38 @@ public struct AppearanceConfig: Codable, Equatable {
         accentColor = try container.decodeIfPresent(String.self, forKey: .accentColor)
         iconSize = try container.decodeIfPresent(Double.self, forKey: .iconSize) ?? 32
         showAppLabels = try container.decodeIfPresent(Bool.self, forKey: .showAppLabels) ?? false
+        taskbarColors = try container.decodeIfPresent(TaskbarColorOverrides.self, forKey: .taskbarColors) ?? TaskbarColorOverrides()
+        buttonColors = try container.decodeIfPresent(ButtonColorOverrides.self, forKey: .buttonColors) ?? ButtonColorOverrides()
+    }
+}
+
+/// Hex color overrides (e.g. `"#RRGGBB"` or `"#RRGGBBAA"`) for the taskbar's
+/// own background/border. Leaving a field `null` (the default) means "follow
+/// the system light/dark appearance" instead of a fixed color. The taskbar
+/// itself has no text of its own, so there's no `text` field here — see
+/// `ButtonColorOverrides` for the taskbar buttons' text color.
+public struct TaskbarColorOverrides: Codable, Equatable {
+    public var background: String?
+    public var border: String?
+
+    public init(background: String? = nil, border: String? = nil) {
+        self.background = background
+        self.border = border
+    }
+}
+
+/// Hex color overrides for the taskbar buttons (pinned apps, running
+/// windows, and the Quick Launch button). Every field is optional and
+/// `null` by default, meaning "follow the system appearance/accent color".
+public struct ButtonColorOverrides: Codable, Equatable {
+    public var background: String?
+    public var border: String?
+    public var text: String?
+
+    public init(background: String? = nil, border: String? = nil, text: String? = nil) {
+        self.background = background
+        self.border = border
+        self.text = text
     }
 }
 

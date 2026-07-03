@@ -7,7 +7,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>DockSheath</string>
 	<key>CFBundleIdentifier</key>
-	<string>dev.wentthefox.docksheath</string>
+	<string>tf.went.docksheath</string>
 	<key>CFBundleExecutable</key>
 	<string>DockSheath</string>
 	<key>CFBundlePackageType</key>

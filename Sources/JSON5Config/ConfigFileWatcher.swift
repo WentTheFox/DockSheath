@@ -12,7 +12,7 @@ public final class ConfigFileWatcher {
     private let onChange: () -> Void
     private var source: DispatchSourceFileSystemObject?
     private var fileDescriptor: CInt = -1
-    private let queue = DispatchQueue(label: "dev.wentthefox.docksheath.configwatcher")
+    private let queue = DispatchQueue(label: "tf.went.docksheath.configwatcher")
     private var debounceWorkItem: DispatchWorkItem?
     private let debounceInterval: TimeInterval
 

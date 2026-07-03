@@ -24,12 +24,20 @@ public final class OverlayWindowController {
     /// How long the mouse must stay away from the edge/taskbar before it's
     /// concealed again while mirroring an auto-hidden Dock.
     public var autoConcealDelay: TimeInterval = 0.4
+    /// How often to re-check the Dock's reserved size as a fallback, in case
+    /// `NSApplication.didChangeScreenParametersNotification` doesn't fire
+    /// promptly for every step of a live Dock icon-size drag in System
+    /// Settings. `refreshGeometry()` always reads the live `visibleFrame`,
+    /// so this just bounds how stale the taskbar's size can get, not how
+    /// stale the underlying data is.
+    public var geometryPollInterval: TimeInterval = 1.0
 
     private var lastDiagnosis: DockHealthCheck.Diagnosis?
     private var lastEdge: DockEdge?
     private var isMirroringAutoHide = false
     private var mouseMonitors: [Any] = []
     private var concealWorkItem: DispatchWorkItem?
+    private var geometryPollTimer: Timer?
 
     private static let defaultAutoRevealThickness: CGFloat = 70
 
@@ -51,10 +59,15 @@ public final class OverlayWindowController {
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
+
+        geometryPollTimer = Timer.scheduledTimer(withTimeInterval: geometryPollInterval, repeats: true) { [weak self] _ in
+            self?.refreshGeometry()
+        }
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        geometryPollTimer?.invalidate()
         stopMouseMonitoring()
     }
 
@@ -133,6 +146,12 @@ public final class OverlayWindowController {
         guard isMirroringAutoHide else { return }
         isMirroringAutoHide = false
         stopMouseMonitoring()
+        // Mirroring mode always leaves the window concealed when it isn't
+        // actively being hovered-open; normal (non-mirroring) mode expects
+        // the taskbar to be visible by default, so re-show it here. Without
+        // this, toggling Dock auto-hide off while the taskbar happened to be
+        // concealed at that instant would leave it stuck hidden forever.
+        window.orderFrontRegardless()
     }
 
     private func startMouseMonitoring() {

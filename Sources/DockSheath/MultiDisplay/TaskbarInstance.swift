@@ -12,9 +12,20 @@ final class TaskbarInstance {
     let viewController: TaskbarViewController
     let overlay: OverlayWindowController
 
-    init(screen: NSScreen, reservationStrategy: OverlayWindowController.ReservationStrategy) {
+    /// Whether `config.secondaryDisplay`'s overrides apply to this instance
+    /// — true for every screen except the one following the real Dock.
+    /// Derived from the reservation strategy rather than stored separately,
+    /// since the two are always in lockstep (see `OverlayWindowController
+    /// .ReservationStrategy`).
+    private var isSecondary: Bool {
+        if case .fixed = overlay.reservationStrategy { return true }
+        return false
+    }
+
+    init(screen: NSScreen, displayNumber: Int, reservationStrategy: OverlayWindowController.ReservationStrategy) {
         let viewController = TaskbarViewController()
         self.viewController = viewController
+        viewController.displayNumber = displayNumber
         overlay = OverlayWindowController(
             contentViewController: viewController,
             screen: screen,
@@ -34,11 +45,20 @@ final class TaskbarInstance {
     }
 
     func apply(config: TaskbarConfig) {
-        viewController.theme = TaskbarTheme.resolve(config.appearance)
-        viewController.showAppLabels = config.appearance.showAppLabels
+        let effectiveAppearance = isSecondary
+            ? config.appearance.applying(config.secondaryDisplay.appearance)
+            : config.appearance
+        let effectiveTaskbar = isSecondary
+            ? config.taskbar.applying(config.secondaryDisplay.taskbar)
+            : config.taskbar
+
+        viewController.theme = TaskbarTheme.resolve(effectiveAppearance)
+        viewController.showAppLabels = effectiveAppearance.showAppLabels
         viewController.groupWindowsByApp = config.behavior.groupWindowsByApp
         viewController.pinnedApps = config.pinnedApps
-        overlay.sizeOverride = config.taskbar.sizeOverride.map { CGFloat($0) }
+        viewController.showDisplayNumber = effectiveAppearance.showDisplayNumber
+        viewController.clockConfig = effectiveAppearance.clock
+        overlay.sizeOverride = effectiveTaskbar.sizeOverride.map { CGFloat($0) }
     }
 
     func start() {

@@ -36,6 +36,12 @@ final class SecondaryDisplayManager {
             ?? NSScreen.screens[0]
     }
 
+    /// 1-based position of `screen` in `NSScreen.screens` — the number shown
+    /// by each taskbar's display-number indicator, when enabled.
+    static func displayNumber(for screen: NSScreen) -> Int {
+        (NSScreen.screens.firstIndex(of: screen) ?? 0) + 1
+    }
+
     init(primaryScreen: NSScreen) {
         self.primaryScreen = primaryScreen
         NotificationCenter.default.addObserver(
@@ -96,7 +102,7 @@ final class SecondaryDisplayManager {
         for screen in secondaryScreens {
             guard let id = Self.displayID(for: screen), instances[id] == nil else { continue }
             let edge = DockGeometry.dockOrientationPreference() ?? .bottom
-            let instance = TaskbarInstance(screen: screen, reservationStrategy: .fixed(edge: edge))
+            let instance = TaskbarInstance(screen: screen, displayNumber: Self.displayNumber(for: screen), reservationStrategy: .fixed(edge: edge))
             instances[id] = instance
             instance.start()
         }

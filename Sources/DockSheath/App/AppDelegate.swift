@@ -47,7 +47,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard primaryInstance == nil else { return }
 
         let primaryScreen = SecondaryDisplayManager.detectPrimaryDockScreen()
-        let primary = TaskbarInstance(screen: primaryScreen, reservationStrategy: .followRealDock)
+        let primary = TaskbarInstance(
+            screen: primaryScreen,
+            displayNumber: SecondaryDisplayManager.displayNumber(for: primaryScreen),
+            reservationStrategy: .followRealDock
+        )
         primaryInstance = primary
 
         let statusItem = StatusItemController(overlayController: primary.overlay)

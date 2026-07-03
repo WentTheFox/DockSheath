@@ -28,6 +28,8 @@ With `behavior.showOnAllDisplays` enabled, DockSheath also renders a taskbar on 
 - Taskbar and button colors follow the system light/dark appearance by default, with per-element background/border/text overrides available in config
 - Toggle the taskbar via menu bar item or global hotkey to reveal the real Dock underneath
 - Optional taskbar on every other connected display too (`behavior.showOnAllDisplays`) — those screens have no real Dock reserving space for it, so DockSheath actively keeps windows there from sitting underneath it
+- Optional display-number badge and formatted clock at the trailing edge of each taskbar (`appearance.showDisplayNumber`, `appearance.clock`)
+- Secondary-display taskbars can override taskbar size and appearance independently (`secondaryDisplay`), inheriting anything left unset from the main config
 
 ## Requirements
 
@@ -67,6 +69,57 @@ DockSheath stores its config at:
 A commented default is generated on first run. It supports the full [JSON5 spec](https://spec.json5.org) — comments, trailing commas, unquoted keys, single-quoted strings, and more. Edits are picked up automatically while DockSheath is running — no restart needed.
 
 Note: pinning/unpinning an app from the taskbar UI rewrites the file as plain JSON and will remove any comments you've added — hand-edit comments back in afterward if you'd like to keep them.
+
+### Display-number badge and clock
+
+Setting `appearance.showDisplayNumber` to `true` shows a small badge with the screen's number (matching the order in System Settings → Displays) at the trailing edge of its taskbar — handy for telling secondary-display taskbars apart at a glance.
+
+`appearance.clock` adds an optional clock next to it:
+
+```json5
+"clock": {
+  "enabled": true,
+  "format": "h:mm a", // -> "3:45 PM"
+},
+```
+
+`format` uses [`DateFormatter`'s pattern syntax](https://unicode-org.github.io/icu/userguide/format_parse/datetime/#date-field-symbol-table) (Unicode TR35). A few common tokens:
+
+| Token | Meaning | Example |
+| --- | --- | --- |
+| `h` / `H` | hour, 12h / 24h | `3` / `15` |
+| `mm` | minute, zero-padded | `45` |
+| `ss` | second, zero-padded | `09` |
+| `a` | AM/PM | `PM` |
+| `EEE` | weekday, short | `Tue` |
+| `MMM` | month, short | `Jul` |
+| `d` | day of month | `3` |
+
+Some example formats:
+
+| `format` | Renders as |
+| --- | --- |
+| `h:mm a` | `3:45 PM` |
+| `HH:mm` | `15:45` |
+| `h:mm a EEE` | `3:45 PM Tue` |
+| `M/d/yy h:mm a` | `7/3/26 3:45 PM` |
+
+### Secondary-display overrides
+
+When `behavior.showOnAllDisplays` is enabled, the `secondaryDisplay` section lets those taskbars differ from the main one. Any field you set under `secondaryDisplay.taskbar`/`secondaryDisplay.appearance` overrides the matching field in `taskbar`/`appearance`; anything left `null`/omitted inherits the main config's value. The primary display (the one the real Dock is on) always uses `taskbar`/`appearance` directly and ignores this section.
+
+```json5
+"secondaryDisplay": {
+  "taskbar": {
+    "sizeOverride": 40,
+  },
+  "appearance": {
+    "theme": "dark",
+    "showDisplayNumber": true,
+    "clock": { "enabled": true, "format": "HH:mm" },
+  },
+},
+```
 
 ## Contributing
 

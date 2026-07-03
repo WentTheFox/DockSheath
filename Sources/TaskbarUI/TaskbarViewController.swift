@@ -17,10 +17,16 @@ public final class TaskbarViewController: NSViewController {
     private let runningStrip = RunningWindowsStripView(frame: .zero)
     private let separator = NSBox()
     private let backgroundVisualEffect = NSVisualEffectView()
+    private let displayNumberLabel = NSTextField(labelWithString: "")
+    private let clockLabel = NSTextField(labelWithString: "")
+    private let clockDateFormatter = DateFormatter()
+    private var clockTimer: Timer?
     private var separatorWidthConstraint: NSLayoutConstraint!
     private var separatorHeightConstraint: NSLayoutConstraint!
     private var stack: NSStackView!
+    private var indicatorStack: NSStackView!
     private var stackConstraints: [NSLayoutConstraint] = []
+    private var indicatorConstraints: [NSLayoutConstraint] = []
     private var quickLaunchController: QuickLaunchWindowController?
     private var currentEdge: DockEdge = .bottom
 
@@ -51,6 +57,22 @@ public final class TaskbarViewController: NSViewController {
         didSet { applyGroupWindowsByApp() }
     }
 
+    /// 1-based, following `NSScreen.screens` order — only meaningful when
+    /// `showDisplayNumber` is on.
+    public var displayNumber: Int = 1 {
+        didSet { updateDisplayNumberIndicator() }
+    }
+    /// Shows a small badge with `displayNumber` at the taskbar's trailing
+    /// edge.
+    public var showDisplayNumber: Bool = false {
+        didSet { updateDisplayNumberIndicator() }
+    }
+    /// Whether/how to show a taskbar clock, also at the trailing edge (after
+    /// the display-number badge, if both are shown).
+    public var clockConfig: ClockConfig = ClockConfig() {
+        didSet { applyClockConfig() }
+    }
+
     public override func loadView() {
         view = NSView()
     }
@@ -64,6 +86,10 @@ public final class TaskbarViewController: NSViewController {
             pinnedApps.removeAll { $0.id == entry.id }
             onPinnedAppsChanged?(pinnedApps)
         }
+    }
+
+    deinit {
+        clockTimer?.invalidate()
     }
 
     /// Re-lays out the taskbar for the Dock's current edge. Safe to call
@@ -108,10 +134,24 @@ public final class TaskbarViewController: NSViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
 
+        displayNumberLabel.font = .boldSystemFont(ofSize: 10)
+        displayNumberLabel.alignment = .center
+        displayNumberLabel.isHidden = true
+
+        clockLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        clockLabel.isHidden = true
+
+        indicatorStack = NSStackView(views: [displayNumberLabel, clockLabel])
+        indicatorStack.spacing = 6
+        indicatorStack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(indicatorStack)
+
         applyOrientation()
         applyTheme()
         applyShowLabels()
         applyGroupWindowsByApp()
+        updateDisplayNumberIndicator()
+        applyClockConfig()
 
         startButton.onClick = { [weak self] in self?.toggleQuickLaunch() }
     }
@@ -139,6 +179,10 @@ public final class TaskbarViewController: NSViewController {
         startButton.applyTheme(theme)
         pinnedStrip.buttonTheme = theme
         runningStrip.buttonTheme = theme
+
+        let indicatorTextColor = theme.buttonText ?? .labelColor
+        displayNumberLabel.textColor = indicatorTextColor
+        clockLabel.textColor = indicatorTextColor
     }
 
     /// Safe to call before `viewDidLoad()` runs, same as `applyTheme()`.
@@ -154,6 +198,29 @@ public final class TaskbarViewController: NSViewController {
     private func applyGroupWindowsByApp() {
         guard isViewLoaded else { return }
         runningStrip.groupByApp = groupWindowsByApp
+    }
+
+    private func updateDisplayNumberIndicator() {
+        displayNumberLabel.isHidden = !showDisplayNumber
+        displayNumberLabel.stringValue = "\(displayNumber)"
+    }
+
+    private func applyClockConfig() {
+        clockLabel.isHidden = !clockConfig.enabled
+        clockDateFormatter.dateFormat = clockConfig.format
+
+        clockTimer?.invalidate()
+        clockTimer = nil
+        guard clockConfig.enabled else { return }
+
+        updateClockLabel()
+        clockTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.updateClockLabel()
+        }
+    }
+
+    private func updateClockLabel() {
+        clockLabel.stringValue = clockDateFormatter.string(from: Date())
     }
 
     private func applyOrientation() {
@@ -180,6 +247,29 @@ public final class TaskbarViewController: NSViewController {
                 stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             ]
         NSLayoutConstraint.activate(stackConstraints)
+
+        indicatorStack.orientation = orientation
+        indicatorStack.alignment = isHorizontal ? .centerY : .centerX
+
+        // Pinned to the taskbar's trailing (bottom, when vertical) edge
+        // independent of `stack`'s own width, so it stays put at a fixed
+        // corner rather than drifting with however many buttons are
+        // currently showing. The inequality against `stack`'s far edge keeps
+        // the two from visually overlapping if the running-windows strip
+        // grows wide/tall enough to otherwise reach it.
+        NSLayoutConstraint.deactivate(indicatorConstraints)
+        indicatorConstraints = isHorizontal
+            ? [
+                indicatorStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+                indicatorStack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+                indicatorStack.leadingAnchor.constraint(greaterThanOrEqualTo: stack.trailingAnchor, constant: 8),
+            ]
+            : [
+                indicatorStack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
+                indicatorStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                indicatorStack.topAnchor.constraint(greaterThanOrEqualTo: stack.bottomAnchor, constant: 8),
+            ]
+        NSLayoutConstraint.activate(indicatorConstraints)
     }
 
     private func toggleQuickLaunch() {

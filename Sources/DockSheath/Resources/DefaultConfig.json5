@@ -62,10 +62,51 @@
 
     // Colors for the taskbar buttons (Quick Launch, pinned apps, running
     // windows). Same hex format and null-means-system-default rules apply.
+    // "text" is also used for the display-number indicator and clock below.
     "buttonColors": {
       "background": null,
       "border": null,
       "text": null,
+    },
+
+    // Shows a small badge with the display's number (1, 2, 3, ...) at the
+    // trailing edge of its taskbar — the position matches NSScreen.screens
+    // order, which is usually the order shown in System Settings > Displays.
+    // Handy for telling secondary-display taskbars apart at a glance.
+    "showDisplayNumber": false,
+
+    // An optional clock shown next to the display-number badge.
+    "clock": {
+      "enabled": false,
+      // Format string using DateFormatter's pattern syntax (Unicode TR35),
+      // e.g.:
+      //   "h:mm a"        -> "3:45 PM"
+      //   "HH:mm"         -> "15:45"
+      //   "h:mm a EEE"    -> "3:45 PM Tue"
+      //   "M/d/yy h:mm a" -> "7/3/26 3:45 PM"
+      "format": "h:mm a",
+    },
+  },
+
+  // Overrides applied only to taskbars on secondary displays (any screen
+  // besides the one the real Dock is on — see behavior.showOnAllDisplays).
+  // Any field left null/omitted here falls back to the matching field in
+  // "taskbar"/"appearance" above, so you only need to list what should
+  // differ. The primary display's taskbar always uses "taskbar"/
+  // "appearance" directly and ignores this section.
+  "secondaryDisplay": {
+    "taskbar": {
+      // "sizeOverride": 40,
+    },
+    "appearance": {
+      // "theme": "dark",
+      // "accentColor": "#FF6600",
+      // "iconSize": 28,
+      // "showAppLabels": false,
+      // "taskbarColors": { "background": "#1E1E1E", "border": null },
+      // "buttonColors": { "background": null, "border": null, "text": null },
+      // "showDisplayNumber": true,
+      // "clock": { "enabled": true, "format": "HH:mm" },
     },
   },
 }

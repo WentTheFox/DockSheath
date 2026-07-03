@@ -7,7 +7,7 @@ import JSON5Config
 /// recorder control. `NSEvent.keyCode` and Carbon's `RegisterEventHotKey`
 /// (see `GlobalHotKey`) share the same virtual-keycode numbering, so the
 /// captured code can be stored directly with no translation.
-private final class KeyCaptureNSView: NSView {
+fileprivate final class KeyCaptureNSView: NSView {
     var onCapture: ((HotKeyBinding) -> Void)?
     var isRecording = false {
         didSet {

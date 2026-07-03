@@ -8,7 +8,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  build:
+  build-test:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -31,6 +31,21 @@ jobs:
 
       - name: Run tests
         run: swift test
+
+  xcodebuild-sanity:
+    # Runs in parallel with build-test rather than after it — xcodebuild
+    # resolves the package into its own DerivedData rather than reusing
+    # `.build`, so the two never shared build artifacts anyway; running them
+    # as separate jobs just gets both results in the time of the slower one
+    # instead of the sum of both, at no extra runner-minute cost.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
+        with:
+          xcode-version: latest-stable
 
       - name: Build via xcodebuild (sanity check the package opens/builds in Xcode)
         run: xcodebuild build -scheme DockSheath -destination 'platform=macOS'

@@ -52,7 +52,7 @@ open build/DockSheath.app
 
 Or `open Package.swift` to build and run directly from Xcode instead. Move `build/DockSheath.app` to `/Applications` if you want it to stick around.
 
-To pull the latest changes and rebuild an existing install in one step, run `Scripts/update.sh` (defaults to `/Applications`, or pass a different install directory). It quits the running app if needed, replaces the installed `.app`, and clears the quarantine attribute (`xattr -cr`) on the newly built binary so Gatekeeper doesn't block it — every rebuild gets a fresh ad-hoc signature, so you'll need to re-grant Accessibility access after each update.
+To pull the latest changes and rebuild an existing install in one step, run `Scripts/update.sh` (defaults to `/Applications`, or pass a different install directory). It quits the running app if needed, replaces the installed `.app`, and clears the quarantine attribute (`xattr -cr`) on the newly built binary so Gatekeeper doesn't block it. Every rebuild gets a fresh ad-hoc signature, so the previous grant goes stale — rather than leave that for you to clean up by hand in System Settings, the script also runs `tccutil reset` for Accessibility and Screen Recording, so you'll just get a clean permission prompt on next launch instead of needing to remove and re-add the app yourself.
 
 ## Permissions
 

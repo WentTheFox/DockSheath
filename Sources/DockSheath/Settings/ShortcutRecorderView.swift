@@ -47,7 +47,7 @@ struct ShortcutRecorderView: NSViewRepresentable {
     @Binding var isRecording: Bool
     var onCapture: (HotKeyBinding) -> Void
 
-    func makeNSView(context: Context) -> KeyCaptureNSView {
+    fileprivate func makeNSView(context: Context) -> KeyCaptureNSView {
         let view = KeyCaptureNSView()
         view.onCapture = { binding in
             onCapture(binding)
@@ -56,7 +56,7 @@ struct ShortcutRecorderView: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: KeyCaptureNSView, context: Context) {
+    fileprivate func updateNSView(_ nsView: KeyCaptureNSView, context: Context) {
         nsView.isRecording = isRecording
     }
 }

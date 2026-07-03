@@ -78,6 +78,12 @@ public final class WindowEnumerationService {
         copyAttribute(element, attribute) as? Bool
     }
 
+    /// Returns the window's frame in AppKit/Cocoa screen coordinates
+    /// (bottom-left origin, y up) — not the raw Accessibility-API coordinate
+    /// space (top-left origin, y down) `kAXPositionAttribute`/
+    /// `kAXSizeAttribute` report in, which doesn't line up with
+    /// `NSScreen.frame`-based rects like a taskbar's reserved strip. See
+    /// `AXGeometry`.
     private func boundsAttribute(_ element: AXUIElement) -> CGRect? {
         guard let positionValue = copyAttribute(element, kAXPositionAttribute),
               let sizeValue = copyAttribute(element, kAXSizeAttribute),
@@ -92,6 +98,7 @@ public final class WindowEnumerationService {
         AXValueGetValue(positionValue as! AXValue, .cgPoint, &origin)
         // swiftlint:disable:next force_cast
         AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
-        return CGRect(origin: origin, size: size)
+        let axRect = CGRect(origin: origin, size: size)
+        return AXGeometry.flip(axRect, primaryScreenHeight: AXGeometry.primaryScreenHeight)
     }
 }

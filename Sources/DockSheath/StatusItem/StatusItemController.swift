@@ -8,6 +8,10 @@ final class StatusItemController {
     private var dockWarningMenuItem: NSMenuItem?
     private var toggleMenuItem: NSMenuItem?
 
+    /// Called alongside the primary overlay's own toggle, so secondary-screen
+    /// taskbars (see `SecondaryDisplayManager`) show/hide together with it.
+    var onAdditionalToggle: (() -> Void)?
+
     init(overlayController: OverlayWindowController) {
         self.overlayController = overlayController
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -74,6 +78,7 @@ final class StatusItemController {
 
     @objc private func toggleTaskbarVisibility() {
         overlayController.toggleVisibility()
+        onAdditionalToggle?()
         toggleMenuItem?.title = overlayController.isVisible ? "Hide Taskbar" : "Show Taskbar"
     }
 

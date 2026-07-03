@@ -16,6 +16,8 @@ DockSheath follows the Dock to wherever it is — bottom, left, or right — lay
 
 Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad, right-click Dock menus)? Hide the DockSheath taskbar instantly from the menu bar item or a configurable global hotkey (default `⌘⌥D`) to reveal it underneath.
 
+With `behavior.showOnAllDisplays` enabled, DockSheath also renders a taskbar on every other connected screen. The real Dock only ever occupies one screen, so macOS reserves no space at all on the others — DockSheath compensates by actively watching for windows that get placed under its taskbar there and resizing them to sit above it instead.
+
 ## Features
 
 - Taskbar docked to whichever screen edge the Dock is on (bottom, left, or right) with genuine screen-space reservation
@@ -25,6 +27,7 @@ Need the real Dock for something DockSheath doesn't replicate (Trash, Launchpad,
 - Hand-editable JSON5 configuration (comments + trailing commas supported), live-reloaded on save
 - Taskbar and button colors follow the system light/dark appearance by default, with per-element background/border/text overrides available in config
 - Toggle the taskbar via menu bar item or global hotkey to reveal the real Dock underneath
+- Optional taskbar on every other connected display too (`behavior.showOnAllDisplays`) — those screens have no real Dock reserving space for it, so DockSheath actively keeps windows there from sitting underneath it
 
 ## Requirements
 
@@ -82,10 +85,10 @@ Pull requests welcome. Since DockSheath needs Accessibility access to do anythin
 
 ## Known limitations
 
-- Single-display only for now — the taskbar appears on the main screen (multi-monitor support is planned)
 - Not distributed on the Mac App Store (DockSheath runs unsandboxed by necessity, since sandboxed apps can't control other apps' windows via the Accessibility API)
 - Window content thumbnails/previews are not implemented yet
 - The real Dock's own hover tooltips can still appear while it's covered by the taskbar. DockSheath's overlay window does correctly intercept mouse events for its own buttons (it isn't click-through), so this points to the Dock using its own cursor-position tracking that isn't gated by window occlusion — there's no public API to suppress another app's UI, so this isn't something DockSheath can fix
+- On secondary displays (`showOnAllDisplays`), windows that drift under the taskbar are pulled back above it on a ~1s poll rather than instantly, since there's no lightweight per-window move/resize notification available without a heavier per-window `AXObserver`
 
 ## License
 

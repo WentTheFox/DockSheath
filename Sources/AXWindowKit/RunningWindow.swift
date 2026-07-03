@@ -14,6 +14,11 @@ public struct RunningWindow: Identifiable {
     /// name) — see `WindowEnumerationService`. `nil` if the window declines
     /// to report a title via Accessibility.
     public let title: String?
+    /// In AppKit/Cocoa screen coordinates (bottom-left origin, y up) —
+    /// already converted from the Accessibility API's coordinate space by
+    /// `WindowEnumerationService`, so it lines up directly with
+    /// `NSScreen.frame`-based rects. `nil` if the window's position/size
+    /// couldn't be read.
     public let bounds: CGRect?
     public let isMinimized: Bool
     public let axElement: AXUIElement

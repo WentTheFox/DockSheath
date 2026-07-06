@@ -14,7 +14,7 @@ struct SettingsView: View {
                 .tag(SettingsTab.appearance)
 
             SecondaryDisplaySettingsView(model: model)
-                .tabItem { Label("Secondary Display", systemImage: "rectangle.on.rectangle") }
+                .tabItem { Label("Displays", systemImage: "rectangle.on.rectangle") }
                 .tag(SettingsTab.secondaryDisplay)
 
             HotkeySettingsView(model: model)
@@ -25,6 +25,6 @@ struct SettingsView: View {
                 .tabItem { Label("Pinned Apps", systemImage: "pin") }
                 .tag(SettingsTab.pinnedApps)
         }
-        .frame(width: 520, height: 480)
+        .frame(minWidth: 640, minHeight: 480)
     }
 }

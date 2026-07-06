@@ -36,4 +36,20 @@ public final class OverlayWindow: NSWindow {
 
     public override var canBecomeKey: Bool { true }
     public override var canBecomeMain: Bool { false }
+
+    /// DockSheath is essentially never the actual foreground app during
+    /// normal use — the whole point is glancing at/clicking the taskbar
+    /// while some other app stays frontmost — so without this, AppKit's own
+    /// internal drawing code (which many controls/materials/template icons
+    /// consult via these two properties to decide whether to render their
+    /// "active" or dimmed "inactive window" appearance) would treat the
+    /// taskbar as permanently inactive-looking. Overriding the getters (not
+    /// `canBecomeKey`/`canBecomeMain`, which control whether this window is
+    /// *allowed* to actually become key/main) only changes what this
+    /// window's own view hierarchy sees when it asks "am I key/main right
+    /// now" for drawing purposes — it doesn't touch `NSApp.keyWindow`/
+    /// `.mainWindow` or actual keyboard routing, which the window server
+    /// tracks independently of what a window reports about itself here.
+    public override var isKeyWindow: Bool { true }
+    public override var isMainWindow: Bool { true }
 }

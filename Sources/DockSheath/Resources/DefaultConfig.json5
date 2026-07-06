@@ -15,6 +15,14 @@
     // { "bundlePath": "/Applications/Safari.app", "bundleIdentifier": "com.apple.Safari" },
   ],
 
+  // Apps pinned to the top of the Quick Launch menu's app list. Separate from
+  // pinnedApps above — favoriting an app here doesn't add it to the taskbar
+  // strip, and vice versa. Toggle with the star button on an app's row in the
+  // Quick Launch menu, or by hand-editing this list.
+  "quickLaunchFavorites": [
+    // { "bundlePath": "/Applications/Safari.app", "bundleIdentifier": "com.apple.Safari" },
+  ],
+
   "taskbar": {
     // DockSheath follows the real Dock to whichever edge of the screen it's
     // on (bottom, left, or right). Leave sizeOverride as null to auto-detect

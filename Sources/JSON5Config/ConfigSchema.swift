@@ -4,6 +4,10 @@ import Foundation
 public struct TaskbarConfig: Codable, Equatable {
     public var schemaVersion: Int
     public var pinnedApps: [PinnedAppEntry]
+    /// Apps pinned to the top of the Quick Launch menu's app list — distinct
+    /// from `pinnedApps` (the taskbar strip): favoriting an app here doesn't
+    /// add a taskbar button for it, and vice versa.
+    public var quickLaunchFavorites: [PinnedAppEntry]
     public var taskbar: TaskbarAppearanceConfig
     public var hotkeys: HotkeyConfig
     public var behavior: BehaviorConfig
@@ -18,6 +22,7 @@ public struct TaskbarConfig: Codable, Equatable {
     public init(
         schemaVersion: Int = 1,
         pinnedApps: [PinnedAppEntry] = [],
+        quickLaunchFavorites: [PinnedAppEntry] = [],
         taskbar: TaskbarAppearanceConfig = TaskbarAppearanceConfig(),
         hotkeys: HotkeyConfig = HotkeyConfig(),
         behavior: BehaviorConfig = BehaviorConfig(),
@@ -26,6 +31,7 @@ public struct TaskbarConfig: Codable, Equatable {
     ) {
         self.schemaVersion = schemaVersion
         self.pinnedApps = pinnedApps
+        self.quickLaunchFavorites = quickLaunchFavorites
         self.taskbar = taskbar
         self.hotkeys = hotkeys
         self.behavior = behavior
@@ -38,13 +44,14 @@ public struct TaskbarConfig: Codable, Equatable {
     // initializer's default values. A custom decoder is needed so a config
     // file that only sets a few fields (or is empty) still loads correctly.
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, pinnedApps, taskbar, hotkeys, behavior, appearance, secondaryDisplay
+        case schemaVersion, pinnedApps, quickLaunchFavorites, taskbar, hotkeys, behavior, appearance, secondaryDisplay
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         pinnedApps = try container.decodeIfPresent([PinnedAppEntry].self, forKey: .pinnedApps) ?? []
+        quickLaunchFavorites = try container.decodeIfPresent([PinnedAppEntry].self, forKey: .quickLaunchFavorites) ?? []
         taskbar = try container.decodeIfPresent(TaskbarAppearanceConfig.self, forKey: .taskbar) ?? TaskbarAppearanceConfig()
         hotkeys = try container.decodeIfPresent(HotkeyConfig.self, forKey: .hotkeys) ?? HotkeyConfig()
         behavior = try container.decodeIfPresent(BehaviorConfig.self, forKey: .behavior) ?? BehaviorConfig()

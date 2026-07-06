@@ -48,6 +48,15 @@ final class TaskbarInstance {
             updated.pinnedApps = pinnedApps
             ConfigStore.shared.save(updated)
         }
+        // Same reasoning as onPinnedAppsChanged above: every taskbar instance
+        // shares one persisted quickLaunchFavorites list, since the Quick
+        // Launch menu (unlike the pinned-apps strip) isn't hidden on
+        // secondary-display instances.
+        viewController.onQuickLaunchFavoritesChanged = { favorites in
+            var updated = ConfigStore.shared.config
+            updated.quickLaunchFavorites = favorites
+            ConfigStore.shared.save(updated)
+        }
         viewController.onManagePinnedApps = onManagePinnedApps
     }
 
@@ -63,6 +72,7 @@ final class TaskbarInstance {
         viewController.showAppLabels = effectiveAppearance.showAppLabels
         viewController.groupWindowsByApp = config.behavior.groupWindowsByApp
         viewController.pinnedApps = config.pinnedApps
+        viewController.quickLaunchFavorites = config.quickLaunchFavorites
         viewController.showDisplayNumber = effectiveAppearance.showDisplayNumber
         viewController.clockConfig = effectiveAppearance.clock
         overlay.sizeOverride = effectiveTaskbar.sizeOverride.map { CGFloat($0) }

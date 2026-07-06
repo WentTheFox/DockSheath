@@ -33,6 +33,13 @@ public final class TaskbarViewController: NSViewController {
         didSet { applyPinnedAppsAndDisplayRole() }
     }
 
+    /// Apps pinned to the top of the Quick Launch menu's app list — separate
+    /// from `pinnedApps` (the taskbar strip). Read by
+    /// `quickLaunchMenuController` each time the menu opens.
+    public var quickLaunchFavorites: [PinnedAppEntry] = []
+    public var onQuickLaunchFavoritesChanged: (([PinnedAppEntry]) -> Void)?
+    private let quickLaunchMenuController = QuickLaunchMenuController()
+
     /// Whether this is the primary (real-Dock-following) taskbar instance,
     /// as opposed to one of the optional secondary-display ones
     /// (`behavior.showOnAllDisplays`). Pinned apps only ever show here — a
@@ -317,46 +324,20 @@ public final class TaskbarViewController: NSViewController {
         NSLayoutConstraint.activate(indicatorConstraints)
     }
 
-    /// The Start button's menu: every pinned app (click to launch), plus a
-    /// way to add/remove pins. `NSMenu` handles keeping itself on-screen
-    /// regardless of which screen edge the taskbar is on, so unlike the
-    /// search panel this replaced, there's no manual anchor-point/edge math
+    /// The Start button's menu: every installed app, live-searchable, with
+    /// `quickLaunchFavorites` pinned to the top — see
+    /// `QuickLaunchMenuController` for the actual menu construction/dismissal
+    /// behavior. Staying on `NSMenu` (rather than the search panel this
+    /// replaced) means outside clicks, other taskbar buttons, and losing
+    /// focus all dismiss it natively, with no manual anchor-point/edge math
     /// needed here.
     private func showQuickLaunchMenu() {
-        let menu = NSMenu()
-
-        if pinnedApps.isEmpty {
-            let emptyItem = NSMenuItem(title: "No Pinned Apps", action: nil, keyEquivalent: "")
-            emptyItem.isEnabled = false
-            menu.addItem(emptyItem)
-        } else {
-            for entry in pinnedApps {
-                let title = (entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
-                let item = NSMenuItem(title: title, action: #selector(launchPinnedAppMenuAction(_:)), keyEquivalent: "")
-                item.target = self
-                item.image = NSWorkspace.shared.icon(forFile: entry.bundlePath)
-                item.representedObject = entry
-                menu.addItem(item)
-            }
+        quickLaunchMenuController.favorites = quickLaunchFavorites
+        quickLaunchMenuController.onFavoritesChanged = { [weak self] favorites in
+            self?.quickLaunchFavorites = favorites
+            self?.onQuickLaunchFavoritesChanged?(favorites)
         }
-
-        menu.addItem(.separator())
-        let manageItem = NSMenuItem(title: "Manage Pinned Apps…", action: #selector(managePinnedAppsMenuAction), keyEquivalent: "")
-        manageItem.target = self
-        menu.addItem(manageItem)
-
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: startButton.bounds.height), in: startButton)
-    }
-
-    @objc private func launchPinnedAppMenuAction(_ sender: NSMenuItem) {
-        guard let entry = sender.representedObject as? PinnedAppEntry else { return }
-        NSWorkspace.shared.openApplication(
-            at: URL(fileURLWithPath: entry.bundlePath),
-            configuration: NSWorkspace.OpenConfiguration()
-        )
-    }
-
-    @objc private func managePinnedAppsMenuAction() {
-        onManagePinnedApps?()
+        quickLaunchMenuController.onManagePinnedApps = { [weak self] in self?.onManagePinnedApps?() }
+        quickLaunchMenuController.show(from: startButton)
     }
 }

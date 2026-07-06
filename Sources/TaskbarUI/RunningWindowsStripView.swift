@@ -90,7 +90,22 @@ public final class RunningWindowsStripView: NSView {
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(self, selector: #selector(refresh), name: NSWorkspace.didLaunchApplicationNotification, object: nil)
         center.addObserver(self, selector: #selector(refresh), name: NSWorkspace.didTerminateApplicationNotification, object: nil)
-        center.addObserver(self, selector: #selector(refresh), name: NSWorkspace.didActivateApplicationNotification, object: nil)
+        center.addObserver(self, selector: #selector(handleAppActivated(_:)), name: NSWorkspace.didActivateApplicationNotification, object: nil)
+    }
+
+    /// `didActivateApplicationNotification` also fires when DockSheath
+    /// activates itself (e.g. via Settings/Onboarding/the Dock-health alert,
+    /// which all call `NSApp.activate(ignoringOtherApps:)`) — that never
+    /// means some other app's windows changed, so rebuilding here would be
+    /// not just wasteful but destructive if it raced with an in-flight
+    /// click's gesture recognizer on a `TaskbarButton` (see
+    /// `rebuildButtons()`, which tears down and reconstructs every button).
+    /// Only forward to `refresh()` for genuinely different apps activating.
+    @objc private func handleAppActivated(_ notification: Notification) {
+        guard let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+              activatedApp.processIdentifier != NSRunningApplication.current.processIdentifier
+        else { return }
+        refresh()
     }
 
     private func restartPolling() {

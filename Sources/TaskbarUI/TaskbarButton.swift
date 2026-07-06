@@ -41,6 +41,12 @@ public final class TaskbarButton: NSView {
     public var textColor: NSColor = .labelColor {
         didSet { label.textColor = textColor }
     }
+    public var font: NSFont = .systemFont(ofSize: 11) {
+        didSet {
+            label.font = font
+            invalidateIntrinsicContentSize()
+        }
+    }
 
     private let imageView: NSImageView
     private let label: NSTextField
@@ -178,6 +184,7 @@ public final class TaskbarButton: NSView {
         borderColor = theme.buttonBorder
         textColor = theme.buttonText ?? .labelColor
         highlightColor = theme.buttonHighlight
+        font = theme.buttonFont
     }
 
     public override func draw(_ dirtyRect: NSRect) {

@@ -175,11 +175,9 @@ public final class TaskbarViewController: NSViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
 
-        displayNumberLabel.font = .boldSystemFont(ofSize: 10)
         displayNumberLabel.alignment = .center
         displayNumberLabel.isHidden = true
 
-        clockLabel.font = .systemFont(ofSize: 11, weight: .medium)
         clockLabel.isHidden = true
 
         indicatorStack = NSStackView(views: [displayNumberLabel, clockLabel])
@@ -224,6 +222,8 @@ public final class TaskbarViewController: NSViewController {
         let indicatorTextColor = theme.buttonText ?? .labelColor
         displayNumberLabel.textColor = indicatorTextColor
         clockLabel.textColor = indicatorTextColor
+        displayNumberLabel.font = theme.displayNumberFont
+        clockLabel.font = theme.clockFont
     }
 
     /// Safe to call before `viewDidLoad()` runs — `pinnedStrip`/`runningStrip`

@@ -34,6 +34,25 @@ public enum AccessibilityWindowController {
         AXUIElementSetAttributeValue(window.axElement, kAXSizeAttribute as CFString, sizeValue)
     }
 
+    /// The click behavior shared by any single taskbar button representing a
+    /// whole app group — used both by `RunningWindowsStripView` and by
+    /// `PinnedAppsStripView` once a pinned app has open windows and its
+    /// button merges with the running one. Minimizes every window in the
+    /// group if it's already frontmost and none are minimized, otherwise
+    /// raises/activates the first window (matching how clicking a Dock icon
+    /// behaves).
+    public static func activateOrMinimize(_ group: RunningAppGroup, frontmostPID: pid_t?) {
+        guard let firstWindow = group.windows.first else { return }
+        let isFrontmost = group.id == frontmostPID
+        let anyMinimized = group.windows.contains { $0.isMinimized }
+
+        if isFrontmost && !anyMinimized {
+            group.windows.forEach(minimize)
+        } else {
+            activate(firstWindow)
+        }
+    }
+
     public static func close(_ window: RunningWindow) {
         var closeButtonValue: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(

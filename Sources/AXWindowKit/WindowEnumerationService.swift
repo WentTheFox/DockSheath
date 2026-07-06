@@ -9,6 +9,17 @@ import ApplicationServices
 /// Recording access, unlike `CGWindowListCopyWindowInfo`'s window name,
 /// so DockSheath doesn't need that additional permission for MVP.
 public final class WindowEnumerationService {
+    /// Finder reports one AX window even with no Finder window actually
+    /// open — its desktop icons view, which is a real (if normally
+    /// invisible/borderless) window as far as Accessibility is concerned.
+    /// Without this, Finder would permanently occupy a taskbar button. Note
+    /// this is a heuristic, not a true "is a real window" check: with
+    /// per-display desktops enabled, Finder reports one such window per
+    /// connected screen, so on a multi-monitor setup this threshold won't
+    /// hide it even with zero actual Finder windows open.
+    private static let finderBundleIdentifier = "com.apple.finder"
+    private static let finderMinimumRealWindowCount = 2
+
     public init() {}
 
     public func enumerateGroups() -> [RunningAppGroup] {
@@ -18,6 +29,9 @@ public final class WindowEnumerationService {
         for app in apps {
             let appWindows = windows(for: app)
             guard !appWindows.isEmpty else { continue }
+            if app.bundleIdentifier == Self.finderBundleIdentifier, appWindows.count < Self.finderMinimumRealWindowCount {
+                continue
+            }
             groups.append(
                 RunningAppGroup(
                     id: app.processIdentifier,

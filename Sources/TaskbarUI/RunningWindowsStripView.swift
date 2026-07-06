@@ -39,10 +39,50 @@ public final class RunningWindowsStripView: NSView {
         didSet { rebuildButtons() }
     }
 
+    /// Bundle identifiers already pinned to the taskbar, *only on the
+    /// primary display* — `TaskbarViewController` passes an empty set here
+    /// for secondary-display strips. Their groups are withheld from this
+    /// strip entirely — a pinned app's button lives in `PinnedAppsStripView`
+    /// instead (merged with the running app once it has windows), so showing
+    /// it here too would duplicate it. That merge only ever happens on the
+    /// primary display, though: a pinned app's window that's actually open on
+    /// a secondary display still needs its own ordinary button there, since
+    /// nothing on that screen represents it otherwise.
+    public var pinnedBundleIdentifiers: Set<String> = [] {
+        didSet { rebuildButtons() }
+    }
+
+    /// Every currently pinned bundle identifier, regardless of display —
+    /// unlike `pinnedBundleIdentifiers`, always fully populated even on a
+    /// secondary-display strip. Used only to hide the redundant "Pin to
+    /// Taskbar" context-menu item for a group/window whose app is already
+    /// pinned (which `pinnedBundleIdentifiers` being empty there would
+    /// otherwise miss).
+    public var allPinnedBundleIdentifiers: Set<String> = []
+
+    /// Whether this strip belongs to the primary (real-Dock-following)
+    /// taskbar instance rather than a secondary-display one
+    /// (`behavior.showOnAllDisplays`). A window only ever gets a button on
+    /// the one taskbar for the display it's actually on (see
+    /// `RunningWindow.hostScreen`) — this decides who claims a window whose
+    /// screen can't be determined at all, so it always ends up shown
+    /// *somewhere* rather than silently vanishing.
+    public var isPrimaryDisplay: Bool = true {
+        didSet { rebuildButtons() }
+    }
+
     /// Requests pinning the given app to the taskbar, from a running
     /// window/group's right-click menu. The caller (`TaskbarViewController`)
     /// owns the actual pinned-apps list and is responsible for de-duplicating.
     public var onPin: ((PinnedAppEntry) -> Void)?
+
+    /// Fired every time `refresh()` re-enumerates windows, with the group
+    /// list *unfiltered* by pinned status or by display — `TaskbarViewController`
+    /// forwards this to `PinnedAppsStripView`, which only ever exists on the
+    /// primary display and should merge with a pinned app's windows
+    /// regardless of which screen they're actually on (mirroring how a
+    /// single Dock icon controls an app's windows across every display).
+    public var onGroupsUpdated: (([RunningAppGroup]) -> Void)?
 
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -117,6 +157,7 @@ public final class RunningWindowsStripView: NSView {
 
     @objc public func refresh() {
         groups = service.enumerateGroups()
+        onGroupsUpdated?(groups)
         rebuildButtons()
     }
 
@@ -127,20 +168,38 @@ public final class RunningWindowsStripView: NSView {
         }
 
         let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        // Only the windows actually on this taskbar's own screen — a group
+        // with windows spread across multiple displays gets a differently
+        // (and correctly) sized button on each one.
+        let onThisDisplay: [RunningAppGroup] = groups.compactMap { group in
+            let windowsHere = group.windows.filter(belongsOnThisDisplay)
+            guard !windowsHere.isEmpty else { return nil }
+            var filtered = group
+            filtered.windows = windowsHere
+            return filtered
+        }
+        // Pinned apps get their button from `PinnedAppsStripView` instead —
+        // once they have windows it merges with what would otherwise be this
+        // exact group, so it must not also appear here.
+        let visibleGroups = onThisDisplay.filter {
+            guard let bundleIdentifier = $0.bundleIdentifier else { return true }
+            return !pinnedBundleIdentifiers.contains(bundleIdentifier)
+        }
 
         if groupByApp {
-            for group in groups {
-                let button = TaskbarButton(icon: group.icon, title: displayLabel(for: group))
-                button.toolTip = tooltipText(for: group)
+            for group in visibleGroups {
+                let button = TaskbarButton(icon: group.icon, title: group.taskbarDisplayLabel)
+                button.toolTip = group.taskbarTooltip
                 button.showsLabel = showsLabels
                 button.applyTheme(buttonTheme)
                 button.isHighlighted = group.id == frontmostPID
                 button.onClick = { [weak self] in self?.handleClick(group: group) }
                 button.onRightClick = { [weak self] in self?.showContextMenu(for: group, from: button) }
+                button.onMiddleClick = { [weak self] in self?.launchNewInstance(bundleIdentifier: group.bundleIdentifier) }
                 stackView.addArrangedSubview(button)
             }
         } else {
-            for group in groups {
+            for group in visibleGroups {
                 for window in group.windows {
                     let title = window.title?.isEmpty == false ? window.title! : group.appName
                     let button = TaskbarButton(icon: group.icon, title: title)
@@ -149,30 +208,24 @@ public final class RunningWindowsStripView: NSView {
                     button.isHighlighted = group.id == frontmostPID
                     button.onClick = { [weak self] in self?.handleClick(window: window) }
                     button.onRightClick = { [weak self] in self?.showWindowContextMenu(for: window, from: button) }
+                    button.onMiddleClick = { [weak self] in self?.launchNewInstance(bundleIdentifier: window.ownerBundleIdentifier) }
                     stackView.addArrangedSubview(button)
                 }
             }
         }
     }
 
-    /// A single window's title when there's only one, or "AppName (N)" when
-    /// the app has multiple windows grouped under this button — the
-    /// individual titles are still available via `tooltipText(for:)`.
-    private func displayLabel(for group: RunningAppGroup) -> String {
-        if group.windows.count == 1, let title = group.windows[0].title, !title.isEmpty {
-            return title
+    /// Whether `runningWindow` belongs on this particular taskbar instance —
+    /// true if it's actually on the screen this strip's own window
+    /// currently occupies, or if its screen can't be determined at all
+    /// (either `RunningWindow.hostScreen` came back nil, or this view isn't
+    /// installed in a window yet) and this happens to be the primary
+    /// display's strip, which claims every otherwise-unclaimed window.
+    private func belongsOnThisDisplay(_ runningWindow: RunningWindow) -> Bool {
+        guard let hostScreen = runningWindow.hostScreen, let ownScreen = window?.screen else {
+            return isPrimaryDisplay
         }
-        if group.windows.count > 1 {
-            return "\(group.appName) (\(group.windows.count))"
-        }
-        return group.appName
-    }
-
-    private func tooltipText(for group: RunningAppGroup) -> String {
-        guard group.windows.count > 1 else { return displayLabel(for: group) }
-        return group.windows
-            .map { $0.title?.isEmpty == false ? $0.title! : group.appName }
-            .joined(separator: "\n")
+        return hostScreen.directDisplayID == ownScreen.directDisplayID
     }
 
     private func applyButtonTheme() {
@@ -182,15 +235,7 @@ public final class RunningWindowsStripView: NSView {
     }
 
     private func handleClick(group: RunningAppGroup) {
-        guard let firstWindow = group.windows.first else { return }
-        let isFrontmost = group.id == NSWorkspace.shared.frontmostApplication?.processIdentifier
-        let anyMinimized = group.windows.contains { $0.isMinimized }
-
-        if isFrontmost && !anyMinimized {
-            group.windows.forEach(AccessibilityWindowController.minimize)
-        } else {
-            AccessibilityWindowController.activate(firstWindow)
-        }
+        AccessibilityWindowController.activateOrMinimize(group, frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier)
         refresh()
     }
 
@@ -200,13 +245,20 @@ public final class RunningWindowsStripView: NSView {
             .representedObject = group
         menu.addItem(withTitle: "Close", action: #selector(closeMenuAction(_:)), keyEquivalent: "")
             .representedObject = group
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinGroupMenuAction(_:)), keyEquivalent: "")
-            .representedObject = group
+        if !isPinned(bundleIdentifier: group.bundleIdentifier) {
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinGroupMenuAction(_:)), keyEquivalent: "")
+                .representedObject = group
+        }
         for item in menu.items {
             item.target = self
         }
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: view.bounds.height), in: view)
+    }
+
+    private func isPinned(bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        return allPinnedBundleIdentifiers.contains(bundleIdentifier)
     }
 
     @objc private func minimizeMenuAction(_ sender: NSMenuItem) {
@@ -245,9 +297,11 @@ public final class RunningWindowsStripView: NSView {
             .representedObject = window
         menu.addItem(withTitle: "Close", action: #selector(closeWindowMenuAction(_:)), keyEquivalent: "")
             .representedObject = window
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinWindowMenuAction(_:)), keyEquivalent: "")
-            .representedObject = window
+        if !isPinned(bundleIdentifier: window.ownerBundleIdentifier) {
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinWindowMenuAction(_:)), keyEquivalent: "")
+                .representedObject = window
+        }
         for item in menu.items {
             item.target = self
         }
@@ -278,5 +332,16 @@ public final class RunningWindowsStripView: NSView {
         guard let bundleIdentifier,
               let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
         onPin?(PinnedAppEntry(bundlePath: url.path, bundleIdentifier: bundleIdentifier))
+    }
+
+    /// Middle-click on any running-window button — launches another copy of
+    /// the app rather than activating the window(s) already open, which is
+    /// what a plain click does.
+    private func launchNewInstance(bundleIdentifier: String?) {
+        guard let bundleIdentifier,
+              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 }

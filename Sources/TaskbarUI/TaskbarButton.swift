@@ -2,8 +2,8 @@ import AppKit
 
 /// A single button used for the Start button, pinned apps, and
 /// running-window groups on the taskbar. Supports left-click, right-click
-/// (context menu), and a highlighted state (e.g. for the frontmost app's
-/// group).
+/// (context menu), middle-click (launch a new instance of the app), and a
+/// highlighted state (e.g. for the frontmost app's group).
 ///
 /// Icon-only when `showsLabel` is false — a centered square icon, matching
 /// the classic Dock-icon look. Icon-and-title in a single row when true, so
@@ -16,6 +16,7 @@ import AppKit
 public final class TaskbarButton: NSView {
     public var onClick: (() -> Void)?
     public var onRightClick: (() -> Void)?
+    public var onMiddleClick: (() -> Void)?
 
     /// The widest a labeled button is allowed to grow before its title
     /// truncates instead.
@@ -132,6 +133,14 @@ public final class TaskbarButton: NSView {
 
     public override func rightMouseDown(with event: NSEvent) {
         onRightClick?()
+    }
+
+    /// Button 2 is the middle mouse button — 0 and 1 (left/right) are
+    /// delivered via `handleClick()`/`rightMouseDown(with:)` instead, not
+    /// here, since AppKit routes those through separate methods entirely.
+    public override func otherMouseDown(with event: NSEvent) {
+        guard event.buttonNumber == 2 else { return }
+        onMiddleClick?()
     }
 
     /// Without this, a click while DockSheath isn't the active app (the

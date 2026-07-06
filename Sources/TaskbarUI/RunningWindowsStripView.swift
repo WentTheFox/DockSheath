@@ -39,10 +39,24 @@ public final class RunningWindowsStripView: NSView {
         didSet { rebuildButtons() }
     }
 
+    /// Bundle identifiers already pinned to the taskbar. Their groups are
+    /// withheld from this strip entirely — a pinned app's button lives in
+    /// `PinnedAppsStripView` instead (merged with the running app once it has
+    /// windows), so showing it here too would duplicate it.
+    public var pinnedBundleIdentifiers: Set<String> = [] {
+        didSet { rebuildButtons() }
+    }
+
     /// Requests pinning the given app to the taskbar, from a running
     /// window/group's right-click menu. The caller (`TaskbarViewController`)
     /// owns the actual pinned-apps list and is responsible for de-duplicating.
     public var onPin: ((PinnedAppEntry) -> Void)?
+
+    /// Fired every time `refresh()` re-enumerates windows, with the
+    /// *unfiltered* group list (including pinned apps) — `TaskbarViewController`
+    /// forwards this to `PinnedAppsStripView` so it can detect which pinned
+    /// apps currently have open windows to merge with.
+    public var onGroupsUpdated: (([RunningAppGroup]) -> Void)?
 
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -117,6 +131,7 @@ public final class RunningWindowsStripView: NSView {
 
     @objc public func refresh() {
         groups = service.enumerateGroups()
+        onGroupsUpdated?(groups)
         rebuildButtons()
     }
 
@@ -127,11 +142,18 @@ public final class RunningWindowsStripView: NSView {
         }
 
         let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        // Pinned apps get their button from `PinnedAppsStripView` instead —
+        // once they have windows it merges with what would otherwise be this
+        // exact group, so it must not also appear here.
+        let visibleGroups = groups.filter {
+            guard let bundleIdentifier = $0.bundleIdentifier else { return true }
+            return !pinnedBundleIdentifiers.contains(bundleIdentifier)
+        }
 
         if groupByApp {
-            for group in groups {
-                let button = TaskbarButton(icon: group.icon, title: displayLabel(for: group))
-                button.toolTip = tooltipText(for: group)
+            for group in visibleGroups {
+                let button = TaskbarButton(icon: group.icon, title: group.taskbarDisplayLabel)
+                button.toolTip = group.taskbarTooltip
                 button.showsLabel = showsLabels
                 button.applyTheme(buttonTheme)
                 button.isHighlighted = group.id == frontmostPID
@@ -140,7 +162,7 @@ public final class RunningWindowsStripView: NSView {
                 stackView.addArrangedSubview(button)
             }
         } else {
-            for group in groups {
+            for group in visibleGroups {
                 for window in group.windows {
                     let title = window.title?.isEmpty == false ? window.title! : group.appName
                     let button = TaskbarButton(icon: group.icon, title: title)
@@ -155,26 +177,6 @@ public final class RunningWindowsStripView: NSView {
         }
     }
 
-    /// A single window's title when there's only one, or "AppName (N)" when
-    /// the app has multiple windows grouped under this button — the
-    /// individual titles are still available via `tooltipText(for:)`.
-    private func displayLabel(for group: RunningAppGroup) -> String {
-        if group.windows.count == 1, let title = group.windows[0].title, !title.isEmpty {
-            return title
-        }
-        if group.windows.count > 1 {
-            return "\(group.appName) (\(group.windows.count))"
-        }
-        return group.appName
-    }
-
-    private func tooltipText(for group: RunningAppGroup) -> String {
-        guard group.windows.count > 1 else { return displayLabel(for: group) }
-        return group.windows
-            .map { $0.title?.isEmpty == false ? $0.title! : group.appName }
-            .joined(separator: "\n")
-    }
-
     private func applyButtonTheme() {
         for case let button as TaskbarButton in stackView.arrangedSubviews {
             button.applyTheme(buttonTheme)
@@ -182,15 +184,7 @@ public final class RunningWindowsStripView: NSView {
     }
 
     private func handleClick(group: RunningAppGroup) {
-        guard let firstWindow = group.windows.first else { return }
-        let isFrontmost = group.id == NSWorkspace.shared.frontmostApplication?.processIdentifier
-        let anyMinimized = group.windows.contains { $0.isMinimized }
-
-        if isFrontmost && !anyMinimized {
-            group.windows.forEach(AccessibilityWindowController.minimize)
-        } else {
-            AccessibilityWindowController.activate(firstWindow)
-        }
+        AccessibilityWindowController.activateOrMinimize(group, frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier)
         refresh()
     }
 

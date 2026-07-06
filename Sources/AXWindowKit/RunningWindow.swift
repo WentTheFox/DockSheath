@@ -63,3 +63,30 @@ public struct RunningAppGroup: Identifiable {
         self.windows = windows
     }
 }
+
+extension RunningAppGroup {
+    /// A single window's title when there's only one, or "AppName (N)" when
+    /// multiple windows are grouped under one button — shared by
+    /// `RunningWindowsStripView` and `PinnedAppsStripView` (a pinned app with
+    /// open windows renders using the same group it would otherwise get in
+    /// the running-windows strip, since the two merge into one button).
+    public var taskbarDisplayLabel: String {
+        if windows.count == 1, let title = windows[0].title, !title.isEmpty {
+            return title
+        }
+        if windows.count > 1 {
+            return "\(appName) (\(windows.count))"
+        }
+        return appName
+    }
+
+    /// The individual title of every window in the group, one per line — the
+    /// full detail behind `taskbarDisplayLabel`'s collapsed "AppName (N)"
+    /// form.
+    public var taskbarTooltip: String {
+        guard windows.count > 1 else { return taskbarDisplayLabel }
+        return windows
+            .map { $0.title?.isEmpty == false ? $0.title! : appName }
+            .joined(separator: "\n")
+    }
+}

@@ -30,7 +30,10 @@ public final class TaskbarViewController: NSViewController {
     private var currentEdge: DockEdge = .bottom
 
     public var pinnedApps: [PinnedAppEntry] = [] {
-        didSet { pinnedStrip.pinnedApps = pinnedApps }
+        didSet {
+            pinnedStrip.pinnedApps = pinnedApps
+            runningStrip.pinnedBundleIdentifiers = Set(pinnedApps.compactMap(\.bundleIdentifier))
+        }
     }
     public var onPinnedAppsChanged: (([PinnedAppEntry]) -> Void)?
     /// Opens Settings to the Pinned Apps tab, from the Quick Launch menu's
@@ -95,6 +98,18 @@ public final class TaskbarViewController: NSViewController {
             pinnedApps.append(entry)
             onPinnedAppsChanged?(pinnedApps)
         }
+
+        runningStrip.onGroupsUpdated = { [weak self] groups in
+            self?.pinnedStrip.runningGroups = groups
+        }
+        pinnedStrip.onRequestRefresh = { [weak self] in
+            self?.runningStrip.refresh()
+        }
+        // `runningStrip` already ran its own initial `refresh()` during
+        // construction, before the callback above existed to catch it — redo
+        // it now so already-running pinned apps merge immediately instead of
+        // only after the first poll tick.
+        runningStrip.refresh()
     }
 
     deinit {

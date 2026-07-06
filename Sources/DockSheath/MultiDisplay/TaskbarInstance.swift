@@ -36,6 +36,7 @@ final class TaskbarInstance {
             screen: screen,
             reservationStrategy: reservationStrategy
         )
+        viewController.isPrimaryDisplay = !isSecondary
         overlay.onReservationChanged = { [weak viewController] reservation in
             viewController?.updateLayout(for: reservation.edge)
         }

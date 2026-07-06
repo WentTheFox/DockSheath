@@ -27,7 +27,7 @@ With `behavior.showOnAllDisplays` enabled, DockSheath also renders a taskbar on 
 - Hand-editable JSON5 configuration (comments + trailing commas supported), live-reloaded on save — or use the native **Settings…** window for the same config without hand-editing
 - Taskbar and button colors follow the system light/dark appearance by default, with per-element background/border/text overrides available in config
 - Toggle the taskbar via menu bar item or global hotkey to reveal the real Dock underneath
-- Optional taskbar on every other connected display too (`behavior.showOnAllDisplays`) — those screens have no real Dock reserving space for it, so DockSheath actively keeps windows there from sitting underneath it
+- Optional taskbar on every other connected display too (`behavior.showOnAllDisplays`) — those screens have no real Dock reserving space for it, so DockSheath actively keeps windows there from sitting underneath it; each display's taskbar only shows the windows actually open on it (falling back to the main display for a window whose screen can't be determined), and the pinned-apps strip only ever appears on the main display
 - Optional display-number badge and formatted clock at the trailing edge of each taskbar (`appearance.showDisplayNumber`, `appearance.clock`)
 - Secondary-display taskbars can override taskbar size and appearance independently (`secondaryDisplay`), inheriting anything left unset from the main config
 

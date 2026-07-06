@@ -47,15 +47,28 @@ public final class RunningWindowsStripView: NSView {
         didSet { rebuildButtons() }
     }
 
+    /// Whether this strip belongs to the primary (real-Dock-following)
+    /// taskbar instance rather than a secondary-display one
+    /// (`behavior.showOnAllDisplays`). A window only ever gets a button on
+    /// the one taskbar for the display it's actually on (see
+    /// `RunningWindow.hostScreen`) — this decides who claims a window whose
+    /// screen can't be determined at all, so it always ends up shown
+    /// *somewhere* rather than silently vanishing.
+    public var isPrimaryDisplay: Bool = true {
+        didSet { rebuildButtons() }
+    }
+
     /// Requests pinning the given app to the taskbar, from a running
     /// window/group's right-click menu. The caller (`TaskbarViewController`)
     /// owns the actual pinned-apps list and is responsible for de-duplicating.
     public var onPin: ((PinnedAppEntry) -> Void)?
 
-    /// Fired every time `refresh()` re-enumerates windows, with the
-    /// *unfiltered* group list (including pinned apps) — `TaskbarViewController`
-    /// forwards this to `PinnedAppsStripView` so it can detect which pinned
-    /// apps currently have open windows to merge with.
+    /// Fired every time `refresh()` re-enumerates windows, with the group
+    /// list *unfiltered* by pinned status or by display — `TaskbarViewController`
+    /// forwards this to `PinnedAppsStripView`, which only ever exists on the
+    /// primary display and should merge with a pinned app's windows
+    /// regardless of which screen they're actually on (mirroring how a
+    /// single Dock icon controls an app's windows across every display).
     public var onGroupsUpdated: (([RunningAppGroup]) -> Void)?
 
     public override init(frame frameRect: NSRect) {
@@ -142,10 +155,20 @@ public final class RunningWindowsStripView: NSView {
         }
 
         let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        // Only the windows actually on this taskbar's own screen — a group
+        // with windows spread across multiple displays gets a differently
+        // (and correctly) sized button on each one.
+        let onThisDisplay: [RunningAppGroup] = groups.compactMap { group in
+            let windowsHere = group.windows.filter(belongsOnThisDisplay)
+            guard !windowsHere.isEmpty else { return nil }
+            var filtered = group
+            filtered.windows = windowsHere
+            return filtered
+        }
         // Pinned apps get their button from `PinnedAppsStripView` instead —
         // once they have windows it merges with what would otherwise be this
         // exact group, so it must not also appear here.
-        let visibleGroups = groups.filter {
+        let visibleGroups = onThisDisplay.filter {
             guard let bundleIdentifier = $0.bundleIdentifier else { return true }
             return !pinnedBundleIdentifiers.contains(bundleIdentifier)
         }
@@ -175,6 +198,19 @@ public final class RunningWindowsStripView: NSView {
                 }
             }
         }
+    }
+
+    /// Whether `runningWindow` belongs on this particular taskbar instance —
+    /// true if it's actually on the screen this strip's own window
+    /// currently occupies, or if its screen can't be determined at all
+    /// (either `RunningWindow.hostScreen` came back nil, or this view isn't
+    /// installed in a window yet) and this happens to be the primary
+    /// display's strip, which claims every otherwise-unclaimed window.
+    private func belongsOnThisDisplay(_ runningWindow: RunningWindow) -> Bool {
+        guard let hostScreen = runningWindow.hostScreen, let ownScreen = window?.screen else {
+            return isPrimaryDisplay
+        }
+        return hostScreen.directDisplayID == ownScreen.directDisplayID
     }
 
     private func applyButtonTheme() {

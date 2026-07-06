@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import CoreGraphics
 
 /// A single window belonging to another running application, as seen by
 /// DockSheath's taskbar.
@@ -43,6 +44,31 @@ public struct RunningWindow: Identifiable {
         self.bounds = bounds
         self.isMinimized = isMinimized
         self.axElement = axElement
+    }
+}
+
+extension RunningWindow {
+    /// The screen most of this window's bounds falls on, or `nil` if that
+    /// can't be determined — either `bounds` itself is `nil` (Accessibility
+    /// declined to report position/size), or its center point doesn't land
+    /// on any connected screen. Used to show a running-window button only on
+    /// the taskbar instance for the display the window actually lives on.
+    public var hostScreen: NSScreen? {
+        guard let bounds else { return nil }
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        return NSScreen.screens.first { $0.frame.contains(center) }
+    }
+}
+
+extension NSScreen {
+    /// The Core Graphics display ID backing this screen. Repeated
+    /// `NSScreen.screens` calls aren't documented to return the same object
+    /// instances for the same physical display, so this is a sturdier way to
+    /// compare "is this the same screen" than `NSScreen` object identity —
+    /// matching how `SecondaryDisplayManager` already keys its per-screen
+    /// taskbar instances.
+    public var directDisplayID: CGDirectDisplayID? {
+        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
     }
 }
 

@@ -30,11 +30,21 @@ public final class TaskbarViewController: NSViewController {
     private var currentEdge: DockEdge = .bottom
 
     public var pinnedApps: [PinnedAppEntry] = [] {
-        didSet {
-            pinnedStrip.pinnedApps = pinnedApps
-            runningStrip.pinnedBundleIdentifiers = Set(pinnedApps.compactMap(\.bundleIdentifier))
-        }
+        didSet { applyPinnedAppsAndDisplayRole() }
     }
+
+    /// Whether this is the primary (real-Dock-following) taskbar instance,
+    /// as opposed to one of the optional secondary-display ones
+    /// (`behavior.showOnAllDisplays`). Pinned apps only ever show here — a
+    /// launcher repeated identically on every screen would just be visual
+    /// noise, since launching/activating an app works the same from any one
+    /// of them — and it's also the fallback claimant for a running-window
+    /// button whose screen can't be determined (see
+    /// `RunningWindowsStripView.isPrimaryDisplay`).
+    public var isPrimaryDisplay: Bool = true {
+        didSet { applyPinnedAppsAndDisplayRole() }
+    }
+
     public var onPinnedAppsChanged: (([PinnedAppEntry]) -> Void)?
     /// Opens Settings to the Pinned Apps tab, from the Quick Launch menu's
     /// "Manage Pinned Apps…" item.
@@ -207,6 +217,17 @@ public final class TaskbarViewController: NSViewController {
         let indicatorTextColor = theme.buttonText ?? .labelColor
         displayNumberLabel.textColor = indicatorTextColor
         clockLabel.textColor = indicatorTextColor
+    }
+
+    /// Safe to call before `viewDidLoad()` runs — `pinnedStrip`/`runningStrip`
+    /// are created eagerly as stored properties, not lazily in
+    /// `setUpLayout()`.
+    private func applyPinnedAppsAndDisplayRole() {
+        let effectivePinnedApps = isPrimaryDisplay ? pinnedApps : []
+        pinnedStrip.isHidden = !isPrimaryDisplay
+        pinnedStrip.pinnedApps = effectivePinnedApps
+        runningStrip.pinnedBundleIdentifiers = Set(effectivePinnedApps.compactMap(\.bundleIdentifier))
+        runningStrip.isPrimaryDisplay = isPrimaryDisplay
     }
 
     /// Safe to call before `viewDidLoad()` runs, same as `applyTheme()`.

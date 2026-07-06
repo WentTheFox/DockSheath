@@ -23,6 +23,7 @@ final class SecondaryDisplayManager {
     private var lastConfig: TaskbarConfig?
     private let windowService = WindowEnumerationService()
     private var enforcementTimer: Timer?
+    private let onManagePinnedApps: () -> Void
 
     private static let enforcementInterval: TimeInterval = 1.0
 
@@ -42,8 +43,9 @@ final class SecondaryDisplayManager {
         (NSScreen.screens.firstIndex(of: screen) ?? 0) + 1
     }
 
-    init(primaryScreen: NSScreen) {
+    init(primaryScreen: NSScreen, onManagePinnedApps: @escaping () -> Void) {
         self.primaryScreen = primaryScreen
+        self.onManagePinnedApps = onManagePinnedApps
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(screenParametersDidChange),
@@ -102,7 +104,12 @@ final class SecondaryDisplayManager {
         for screen in secondaryScreens {
             guard let id = Self.displayID(for: screen), instances[id] == nil else { continue }
             let edge = DockGeometry.dockOrientationPreference() ?? .bottom
-            let instance = TaskbarInstance(screen: screen, displayNumber: Self.displayNumber(for: screen), reservationStrategy: .fixed(edge: edge))
+            let instance = TaskbarInstance(
+                screen: screen,
+                displayNumber: Self.displayNumber(for: screen),
+                reservationStrategy: .fixed(edge: edge),
+                onManagePinnedApps: onManagePinnedApps
+            )
             instances[id] = instance
             instance.start()
         }

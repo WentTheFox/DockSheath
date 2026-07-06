@@ -62,14 +62,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Reuses the existing Settings window/controller if one's already open,
     /// same as `showOnboarding()`.
-    private func showSettings() {
+    private func showSettings(selecting tab: SettingsTab? = nil) {
         if let existing = settingsWindowController {
-            existing.showAndActivate()
+            existing.showAndActivate(selecting: tab)
             return
         }
         let controller = SettingsWindowController()
         settingsWindowController = controller
-        controller.showAndActivate()
+        controller.showAndActivate(selecting: tab)
     }
 
     private func startCore() {
@@ -79,7 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let primary = TaskbarInstance(
             screen: primaryScreen,
             displayNumber: SecondaryDisplayManager.displayNumber(for: primaryScreen),
-            reservationStrategy: .followRealDock
+            reservationStrategy: .followRealDock,
+            onManagePinnedApps: { [weak self] in self?.showSettings(selecting: .pinnedApps) }
         )
         primaryInstance = primary
 
@@ -91,7 +92,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem?.updateDockHealth(diagnosis)
         }
 
-        let secondary = SecondaryDisplayManager(primaryScreen: primaryScreen)
+        let secondary = SecondaryDisplayManager(
+            primaryScreen: primaryScreen,
+            onManagePinnedApps: { [weak self] in self?.showSettings(selecting: .pinnedApps) }
+        )
         secondaryDisplays = secondary
         statusItem.onAdditionalToggle = { [weak secondary] in
             secondary?.toggleVisibility()

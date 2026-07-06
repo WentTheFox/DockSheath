@@ -22,7 +22,12 @@ final class TaskbarInstance {
         return false
     }
 
-    init(screen: NSScreen, displayNumber: Int, reservationStrategy: OverlayWindowController.ReservationStrategy) {
+    init(
+        screen: NSScreen,
+        displayNumber: Int,
+        reservationStrategy: OverlayWindowController.ReservationStrategy,
+        onManagePinnedApps: @escaping () -> Void
+    ) {
         let viewController = TaskbarViewController()
         self.viewController = viewController
         viewController.displayNumber = displayNumber
@@ -42,6 +47,7 @@ final class TaskbarInstance {
             updated.pinnedApps = pinnedApps
             ConfigStore.shared.save(updated)
         }
+        viewController.onManagePinnedApps = onManagePinnedApps
     }
 
     func apply(config: TaskbarConfig) {

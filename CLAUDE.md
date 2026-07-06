@@ -60,6 +60,12 @@ Deliberately uses `NSWorkspace.runningApplications` + `AXUIElement` (`kAXWindows
 
 The app is **intentionally non-sandboxed** (no `com.apple.security.app-sandbox` key in `Sources/DockSheath/App/DockSheath.entitlements`) — sandboxed apps can't control other processes' windows via the Accessibility API. This rules out Mac App Store distribution; DockSheath is build-from-source only (see CI/CD below).
 
+### Rebuild-stable TCC identity (`Scripts/update.sh`)
+
+macOS's TCC (permission database) ties an Accessibility/Screen Recording grant to the app's code signature, not just its bundle identifier. A plain ad-hoc signature — what an unsigned local build gets by default — is derived from the binary's own contents, so it changes on every rebuild, and TCC treats each rebuilt binary as a different, ungranted app. `Scripts/update.sh` works around this by signing the assembled bundle with a stable local self-signed certificate (looked up by common name, default `DockSheath Local Signing`, overridable via `DOCKSHEATH_CODESIGN_IDENTITY`) instead of leaving it ad-hoc, so the same identity persists across rebuilds and the grant carries over. If that certificate isn't present in the login keychain yet, the script prints setup instructions and blocks on a keypress (`read -n 1 -s -r -p ...`) rather than failing outright, then re-checks and proceeds once it exists.
+
+`Scripts/build_app.sh` takes the signing identity as an optional third argument and only signs when one is passed — called with no identity (as CI and plain `swift build` + `Scripts/build_app.sh` usage do), it produces the same unsigned/ad-hoc-by-linker bundle as before this existed. The certificate itself is local-machine keychain state, never checked into the repo.
+
 ### Config pipeline (`JSON5Config`)
 
 `Sources/JSON5Config/JSON5Parser.swift` is a hand-written recursive-descent parser for the **full** JSON5 spec (not a restricted subset — an earlier version was, then got upgraded). It parses into a `JSON5Value` tree, which `.toFoundation()` converts to plain Foundation types; those get re-serialized via `JSONSerialization` and handed to `JSONDecoder` so `Codable`/`TaskbarConfig` decoding is reused unchanged.

@@ -53,11 +53,26 @@ open build/DockSheath.app
 
 Or `open Package.swift` to build and run directly from Xcode instead. Move `build/DockSheath.app` to `/Applications` if you want it to stick around.
 
-To pull the latest changes and rebuild an existing install in one step, run `Scripts/update.sh` (defaults to `/Applications`, or pass a different install directory). It quits the running app if needed, replaces the installed `.app`, and clears the quarantine attribute (`xattr -cr`) on the newly built binary so Gatekeeper doesn't block it. Every rebuild gets a fresh ad-hoc signature, so the previous grant goes stale — rather than leave that for you to clean up by hand in System Settings, the script also runs `tccutil reset` for Accessibility and Screen Recording, so you'll just get a clean permission prompt on next launch instead of needing to remove and re-add the app yourself.
+To pull the latest changes and rebuild an existing install in one step, run `Scripts/update.sh` (defaults to `/Applications`, or pass a different install directory). It quits the running app if needed, replaces the installed `.app`, and clears the quarantine attribute (`xattr -cr`) on the newly built binary so Gatekeeper doesn't block it.
+
+Before building, `update.sh` also checks your login keychain for a local code-signing certificate named `DockSheath Local Signing` and signs the build with it. This keeps your Accessibility/Screen Recording grant working across rebuilds — see [Permissions](#permissions) below for why, and how to create that certificate. If the certificate isn't there yet, the script prints setup instructions and pauses, waiting for a keypress before it re-checks and continues — no need to re-run it, just create the certificate and press any key.
 
 ## Permissions
 
 On first launch, DockSheath walks you through granting **Accessibility** access (System Settings → Privacy & Security → Accessibility). This is required for the taskbar to see and control other apps' windows. If you grant access after DockSheath is already running, you may need to quit and relaunch it for the grant to take effect — this is a general macOS quirk, not specific to DockSheath.
+
+### Keeping that grant across rebuilds
+
+macOS's permission system (TCC) ties the Accessibility grant to the app's code signature, not just its bundle identifier. A plain ad-hoc signature (the default for an unsigned local build) is derived from the binary's own contents, so it changes on every rebuild — TCC then treats the rebuilt app as a different, ungranted app, and you'd otherwise have to remove and re-add it in System Settings after every single build.
+
+`Scripts/update.sh` avoids this by signing with a stable local self-signed certificate instead, so the identity stays the same across rebuilds and the grant carries over. To set it up once:
+
+1. Open Keychain Access (Applications → Utilities → Keychain Access)
+2. Keychain Access menu → Certificate Assistant → Create a Certificate...
+3. Name it `DockSheath Local Signing`, set Identity Type to "Self Signed Root" and Certificate Type to "Code Signing"
+4. Click Create, then Done
+
+`update.sh` will detect and use it automatically from then on (pass a different name via the `DOCKSHEATH_CODESIGN_IDENTITY` environment variable if you'd rather call it something else). This is local-machine setup only — the certificate isn't part of the repo, and building via `Scripts/build_app.sh` directly (or from Xcode) without a signing identity still produces the same ad-hoc-signed build as before.
 
 ## Configuration
 
@@ -152,7 +167,7 @@ The codebase is split into focused Swift Package targets under `Sources/`:
 
 Run `swift test` to run the `JSON5Config`/`AXWindowKit` test suites.
 
-Pull requests welcome. Since DockSheath needs Accessibility access to do anything useful, and ad-hoc code signatures change on every local rebuild, macOS's permission system (TCC) may re-prompt you repeatedly while iterating — using a stable local self-signed code-signing certificate for development builds avoids this (see Apple's documentation on creating a certificate in Keychain Access and set it as your local `codesign` identity instead of `-`).
+Pull requests welcome. Since DockSheath needs Accessibility access to do anything useful, and ad-hoc code signatures change on every local rebuild, macOS's permission system (TCC) may re-prompt you repeatedly while iterating if you're building directly via `swift build`/`Scripts/build_app.sh` rather than `Scripts/update.sh` — see [Keeping that grant across rebuilds](#keeping-that-grant-across-rebuilds) for the one-time certificate setup that avoids this.
 
 ## Known limitations
 

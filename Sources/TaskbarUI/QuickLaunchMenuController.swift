@@ -195,7 +195,7 @@ public final class QuickLaunchMenuController: NSObject {
     }
 }
 
-extension QuickLaunchMenuController: NSTextFieldDelegate {
+extension QuickLaunchMenuController: NSSearchFieldDelegate {
     public func controlTextDidChange(_ obj: Notification) {
         query = searchFieldItemView.searchField.stringValue
         rebuildRows()

@@ -71,7 +71,7 @@ macOS's permission system (TCC) ties the Accessibility grant to the app's code s
 2. Keychain Access menu → Certificate Assistant → Create a Certificate...
 3. Name it `DockSheath Local Signing`, set Identity Type to "Self Signed Root" and Certificate Type to "Code Signing"
 4. Click Create, then Done
-5. Find the new certificate, double-click it, expand "Trust", and set "Code Signing" to "Always Trust" — required even right after creation, since self-signed certificates aren't trusted for code signing by default, and `security find-identity` won't count one that isn't (you'll be prompted for your password when you close the panel)
+5. Find the new certificate (`login` keychain → Certificates tab), double-click it, expand "Trust", and set "Code Signing" to "Always Trust" — required even right after creation, since self-signed certificates aren't trusted for code signing by default, and `security find-identity` won't count one that isn't (you'll be prompted for your password when you close the panel)
 
 `update.sh` will detect and use it automatically from then on (pass a different name via the `DOCKSHEATH_CODESIGN_IDENTITY` environment variable if you'd rather call it something else). This is local-machine setup only — the certificate isn't part of the repo, and building via `Scripts/build_app.sh` directly (or from Xcode) without a signing identity still produces the same ad-hoc-signed build as before.
 

@@ -29,7 +29,30 @@ git pull
 
 echo "==> Checking for local code-signing certificate (\"${CODESIGN_IDENTITY_NAME}\")"
 while ! security find-identity -v -p codesigning | grep -q "$CODESIGN_IDENTITY_NAME"; do
-  cat <<EOF
+  # `find-identity -p codesigning` only lists identities that pass a full
+  # trust-chain check for code signing. A just-created self-signed cert
+  # exists in the keychain under the right name but isn't trusted for that
+  # purpose yet, so it's invisible here until that's fixed by hand — check
+  # separately (no trust check, just keychain presence) so the instructions
+  # match what's actually missing instead of telling everyone to recreate
+  # a certificate that's already there.
+  if security find-certificate -c "$CODESIGN_IDENTITY_NAME" -a >/dev/null 2>&1; then
+    cat <<EOF
+
+Found a certificate named "${CODESIGN_IDENTITY_NAME}" in your keychain, but
+it isn't trusted for code signing yet, so it doesn't count — self-signed
+certificates need this set by hand once, it isn't automatic.
+
+To fix:
+  1. Open Keychain Access (Applications > Utilities > Keychain Access)
+  2. Find "${CODESIGN_IDENTITY_NAME}" (search box, top right)
+  3. Double-click it, expand the "Trust" section
+  4. Set "Code Signing" to "Always Trust"
+  5. Close the panel and enter your password when prompted
+
+EOF
+  else
+    cat <<EOF
 
 No code-signing certificate named "${CODESIGN_IDENTITY_NAME}" was found in
 your login keychain. Without one, every rebuild gets a fresh ad-hoc
@@ -43,12 +66,16 @@ To fix this once, create a free local certificate:
      Identity Type: Self Signed Root
      Certificate Type: Code Signing
   4. Click Create, then Done
+  5. Find the new certificate, double-click it, expand "Trust", and set
+     "Code Signing" to "Always Trust" (required — self-signed certs aren't
+     trusted for code signing by default, even right after creation)
 
 (To use a different certificate name, set DOCKSHEATH_CODESIGN_IDENTITY before
 running this script.)
 
 EOF
-  read -n 1 -s -r -p "Press any key once the certificate is installed to continue (Ctrl+C to abort)... "
+  fi
+  read -n 1 -s -r -p "Press any key once that's done to continue (Ctrl+C to abort)... "
   echo
 done
 echo "==> Found certificate"

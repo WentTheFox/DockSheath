@@ -103,6 +103,7 @@ public final class PinnedAppsStripView: NSView {
                 button.isHighlighted = group.id == frontmostPID
                 button.onClick = { [weak self] in self?.handleClick(group: group) }
                 button.onRightClick = { [weak self] in self?.showContextMenu(for: entry, group: group, from: button) }
+                button.onMiddleClick = { [weak self] in self?.launch(entry, newInstance: true) }
             } else {
                 let icon = NSWorkspace.shared.icon(forFile: entry.bundlePath)
                 let name = (entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
@@ -113,6 +114,7 @@ public final class PinnedAppsStripView: NSView {
                 button.showsLabel = false
                 button.onClick = { [weak self] in self?.launch(entry) }
                 button.onRightClick = { [weak self] in self?.showContextMenu(for: entry, group: nil, from: button) }
+                button.onMiddleClick = { [weak self] in self?.launch(entry, newInstance: true) }
             }
 
             button.applyTheme(buttonTheme)
@@ -126,9 +128,14 @@ public final class PinnedAppsStripView: NSView {
         }
     }
 
-    private func launch(_ entry: PinnedAppEntry) {
+    /// `newInstance` is true for a middle-click on an already-running (or
+    /// pinned-only) app's button — otherwise `NSWorkspace` would just
+    /// activate the existing instance instead of launching another one.
+    private func launch(_ entry: PinnedAppEntry, newInstance: Bool = false) {
         let url = URL(fileURLWithPath: entry.bundlePath)
-        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = newInstance
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 
     private func handleClick(group: RunningAppGroup) {

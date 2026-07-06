@@ -182,6 +182,7 @@ public final class RunningWindowsStripView: NSView {
                 button.isHighlighted = group.id == frontmostPID
                 button.onClick = { [weak self] in self?.handleClick(group: group) }
                 button.onRightClick = { [weak self] in self?.showContextMenu(for: group, from: button) }
+                button.onMiddleClick = { [weak self] in self?.launchNewInstance(bundleIdentifier: group.bundleIdentifier) }
                 stackView.addArrangedSubview(button)
             }
         } else {
@@ -194,6 +195,7 @@ public final class RunningWindowsStripView: NSView {
                     button.isHighlighted = group.id == frontmostPID
                     button.onClick = { [weak self] in self?.handleClick(window: window) }
                     button.onRightClick = { [weak self] in self?.showWindowContextMenu(for: window, from: button) }
+                    button.onMiddleClick = { [weak self] in self?.launchNewInstance(bundleIdentifier: window.ownerBundleIdentifier) }
                     stackView.addArrangedSubview(button)
                 }
             }
@@ -308,5 +310,16 @@ public final class RunningWindowsStripView: NSView {
         guard let bundleIdentifier,
               let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
         onPin?(PinnedAppEntry(bundlePath: url.path, bundleIdentifier: bundleIdentifier))
+    }
+
+    /// Middle-click on any running-window button — launches another copy of
+    /// the app rather than activating the window(s) already open, which is
+    /// what a plain click does.
+    private func launchNewInstance(bundleIdentifier: String?) {
+        guard let bundleIdentifier,
+              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 }

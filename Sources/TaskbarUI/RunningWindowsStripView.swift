@@ -60,6 +60,11 @@ public final class RunningWindowsStripView: NSView {
     /// otherwise miss).
     public var allPinnedBundleIdentifiers: Set<String> = []
 
+    /// Every currently favorited (Quick Launch) bundle identifier, regardless
+    /// of display — same rationale as `allPinnedBundleIdentifiers`, just for
+    /// hiding the redundant "Pin to Quick Launch" item instead.
+    public var allQuickLaunchFavoriteBundleIdentifiers: Set<String> = []
+
     /// Whether this strip belongs to the primary (real-Dock-following)
     /// taskbar instance rather than a secondary-display one
     /// (`behavior.showOnAllDisplays`). A window only ever gets a button on
@@ -75,6 +80,12 @@ public final class RunningWindowsStripView: NSView {
     /// window/group's right-click menu. The caller (`TaskbarViewController`)
     /// owns the actual pinned-apps list and is responsible for de-duplicating.
     public var onPin: ((PinnedAppEntry) -> Void)?
+
+    /// Requests favoriting the given app to the Quick Launch menu, from a
+    /// running window/group's right-click menu — same caller-owns-the-list
+    /// contract as `onPin`, just for `quickLaunchFavorites` instead of
+    /// `pinnedApps`.
+    public var onFavorite: ((PinnedAppEntry) -> Void)?
 
     /// Fired every time `refresh()` re-enumerates windows, with the group
     /// list *unfiltered* by pinned status or by display — `TaskbarViewController`
@@ -245,10 +256,18 @@ public final class RunningWindowsStripView: NSView {
             .representedObject = group
         menu.addItem(withTitle: "Close", action: #selector(closeMenuAction(_:)), keyEquivalent: "")
             .representedObject = group
-        if !isPinned(bundleIdentifier: group.bundleIdentifier) {
+        let showPinToTaskbar = !isPinned(bundleIdentifier: group.bundleIdentifier)
+        let showPinToQuickLaunch = !isFavorited(bundleIdentifier: group.bundleIdentifier)
+        if showPinToTaskbar || showPinToQuickLaunch {
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinGroupMenuAction(_:)), keyEquivalent: "")
-                .representedObject = group
+            if showPinToTaskbar {
+                menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinGroupMenuAction(_:)), keyEquivalent: "")
+                    .representedObject = group
+            }
+            if showPinToQuickLaunch {
+                menu.addItem(withTitle: "Pin to Quick Launch", action: #selector(favoriteGroupMenuAction(_:)), keyEquivalent: "")
+                    .representedObject = group
+            }
         }
         for item in menu.items {
             item.target = self
@@ -259,6 +278,11 @@ public final class RunningWindowsStripView: NSView {
     private func isPinned(bundleIdentifier: String?) -> Bool {
         guard let bundleIdentifier else { return false }
         return allPinnedBundleIdentifiers.contains(bundleIdentifier)
+    }
+
+    private func isFavorited(bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        return allQuickLaunchFavoriteBundleIdentifiers.contains(bundleIdentifier)
     }
 
     @objc private func minimizeMenuAction(_ sender: NSMenuItem) {
@@ -276,6 +300,11 @@ public final class RunningWindowsStripView: NSView {
     @objc private func pinGroupMenuAction(_ sender: NSMenuItem) {
         guard let group = sender.representedObject as? RunningAppGroup else { return }
         pin(bundleIdentifier: group.bundleIdentifier)
+    }
+
+    @objc private func favoriteGroupMenuAction(_ sender: NSMenuItem) {
+        guard let group = sender.representedObject as? RunningAppGroup else { return }
+        favorite(bundleIdentifier: group.bundleIdentifier)
     }
 
     // MARK: - Ungrouped (per-window) actions
@@ -297,10 +326,18 @@ public final class RunningWindowsStripView: NSView {
             .representedObject = window
         menu.addItem(withTitle: "Close", action: #selector(closeWindowMenuAction(_:)), keyEquivalent: "")
             .representedObject = window
-        if !isPinned(bundleIdentifier: window.ownerBundleIdentifier) {
+        let showPinToTaskbar = !isPinned(bundleIdentifier: window.ownerBundleIdentifier)
+        let showPinToQuickLaunch = !isFavorited(bundleIdentifier: window.ownerBundleIdentifier)
+        if showPinToTaskbar || showPinToQuickLaunch {
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinWindowMenuAction(_:)), keyEquivalent: "")
-                .representedObject = window
+            if showPinToTaskbar {
+                menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinWindowMenuAction(_:)), keyEquivalent: "")
+                    .representedObject = window
+            }
+            if showPinToQuickLaunch {
+                menu.addItem(withTitle: "Pin to Quick Launch", action: #selector(favoriteWindowMenuAction(_:)), keyEquivalent: "")
+                    .representedObject = window
+            }
         }
         for item in menu.items {
             item.target = self
@@ -325,6 +362,11 @@ public final class RunningWindowsStripView: NSView {
         pin(bundleIdentifier: window.ownerBundleIdentifier)
     }
 
+    @objc private func favoriteWindowMenuAction(_ sender: NSMenuItem) {
+        guard let window = sender.representedObject as? RunningWindow else { return }
+        favorite(bundleIdentifier: window.ownerBundleIdentifier)
+    }
+
     /// Resolves a bundle identifier (all a running window/group carries) to
     /// an installed app's on-disk path so a `PinnedAppEntry` (which needs a
     /// `bundlePath`) can be constructed from it.
@@ -332,6 +374,12 @@ public final class RunningWindowsStripView: NSView {
         guard let bundleIdentifier,
               let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
         onPin?(PinnedAppEntry(bundlePath: url.path, bundleIdentifier: bundleIdentifier))
+    }
+
+    private func favorite(bundleIdentifier: String?) {
+        guard let bundleIdentifier,
+              let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return }
+        onFavorite?(PinnedAppEntry(bundlePath: url.path, bundleIdentifier: bundleIdentifier))
     }
 
     /// Middle-click on any running-window button — launches another copy of

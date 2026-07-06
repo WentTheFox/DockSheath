@@ -36,7 +36,9 @@ public final class TaskbarViewController: NSViewController {
     /// Apps pinned to the top of the Quick Launch menu's app list — separate
     /// from `pinnedApps` (the taskbar strip). Read by
     /// `quickLaunchMenuController` each time the menu opens.
-    public var quickLaunchFavorites: [PinnedAppEntry] = []
+    public var quickLaunchFavorites: [PinnedAppEntry] = [] {
+        didSet { applyPinnedAppsAndDisplayRole() }
+    }
     public var onQuickLaunchFavoritesChanged: (([PinnedAppEntry]) -> Void)?
     private let quickLaunchMenuController = QuickLaunchMenuController()
 
@@ -54,7 +56,7 @@ public final class TaskbarViewController: NSViewController {
 
     public var onPinnedAppsChanged: (([PinnedAppEntry]) -> Void)?
     /// Opens Settings to the Pinned Apps tab, from the Quick Launch menu's
-    /// "Manage Pinned Apps…" item.
+    /// "Open Settings…" item.
     public var onManagePinnedApps: (() -> Void)?
 
     /// The resolved appearance/color theme applied to the taskbar's own
@@ -114,6 +116,13 @@ public final class TaskbarViewController: NSViewController {
             guard !pinnedApps.contains(where: { $0.bundlePath == entry.bundlePath }) else { return }
             pinnedApps.append(entry)
             onPinnedAppsChanged?(pinnedApps)
+        }
+
+        runningStrip.onFavorite = { [weak self] entry in
+            guard let self else { return }
+            guard !quickLaunchFavorites.contains(where: { $0.bundlePath == entry.bundlePath }) else { return }
+            quickLaunchFavorites.append(entry)
+            onQuickLaunchFavoritesChanged?(quickLaunchFavorites)
         }
 
         runningStrip.onGroupsUpdated = { [weak self] groups in
@@ -235,6 +244,7 @@ public final class TaskbarViewController: NSViewController {
         pinnedStrip.pinnedApps = effectivePinnedApps
         runningStrip.pinnedBundleIdentifiers = Set(effectivePinnedApps.compactMap(\.bundleIdentifier))
         runningStrip.allPinnedBundleIdentifiers = Set(pinnedApps.compactMap(\.bundleIdentifier))
+        runningStrip.allQuickLaunchFavoriteBundleIdentifiers = Set(quickLaunchFavorites.compactMap(\.bundleIdentifier))
         runningStrip.isPrimaryDisplay = isPrimaryDisplay
     }
 
@@ -324,19 +334,13 @@ public final class TaskbarViewController: NSViewController {
         NSLayoutConstraint.activate(indicatorConstraints)
     }
 
-    /// The Start button's menu: every installed app, live-searchable, with
-    /// `quickLaunchFavorites` pinned to the top — see
-    /// `QuickLaunchMenuController` for the actual menu construction/dismissal
-    /// behavior. Staying on `NSMenu` (rather than the search panel this
-    /// replaced) means outside clicks, other taskbar buttons, and losing
-    /// focus all dismiss it natively, with no manual anchor-point/edge math
-    /// needed here.
+    /// The Start button's menu: `quickLaunchFavorites`, plus Settings/Quit/
+    /// system power actions at the bottom — see `QuickLaunchMenuController`
+    /// for the actual menu construction. A plain `NSMenu` gets outside-click,
+    /// other-taskbar-button, and lost-focus dismissal for free, with no
+    /// manual anchor-point/edge math needed here.
     private func showQuickLaunchMenu() {
         quickLaunchMenuController.favorites = quickLaunchFavorites
-        quickLaunchMenuController.onFavoritesChanged = { [weak self] favorites in
-            self?.quickLaunchFavorites = favorites
-            self?.onQuickLaunchFavoritesChanged?(favorites)
-        }
         quickLaunchMenuController.onManagePinnedApps = { [weak self] in self?.onManagePinnedApps?() }
         quickLaunchMenuController.show(from: startButton)
     }

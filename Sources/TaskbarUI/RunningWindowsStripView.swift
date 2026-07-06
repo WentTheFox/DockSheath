@@ -39,13 +39,26 @@ public final class RunningWindowsStripView: NSView {
         didSet { rebuildButtons() }
     }
 
-    /// Bundle identifiers already pinned to the taskbar. Their groups are
-    /// withheld from this strip entirely — a pinned app's button lives in
-    /// `PinnedAppsStripView` instead (merged with the running app once it has
-    /// windows), so showing it here too would duplicate it.
+    /// Bundle identifiers already pinned to the taskbar, *only on the
+    /// primary display* — `TaskbarViewController` passes an empty set here
+    /// for secondary-display strips. Their groups are withheld from this
+    /// strip entirely — a pinned app's button lives in `PinnedAppsStripView`
+    /// instead (merged with the running app once it has windows), so showing
+    /// it here too would duplicate it. That merge only ever happens on the
+    /// primary display, though: a pinned app's window that's actually open on
+    /// a secondary display still needs its own ordinary button there, since
+    /// nothing on that screen represents it otherwise.
     public var pinnedBundleIdentifiers: Set<String> = [] {
         didSet { rebuildButtons() }
     }
+
+    /// Every currently pinned bundle identifier, regardless of display —
+    /// unlike `pinnedBundleIdentifiers`, always fully populated even on a
+    /// secondary-display strip. Used only to hide the redundant "Pin to
+    /// Taskbar" context-menu item for a group/window whose app is already
+    /// pinned (which `pinnedBundleIdentifiers` being empty there would
+    /// otherwise miss).
+    public var allPinnedBundleIdentifiers: Set<String> = []
 
     /// Whether this strip belongs to the primary (real-Dock-following)
     /// taskbar instance rather than a secondary-display one
@@ -232,13 +245,20 @@ public final class RunningWindowsStripView: NSView {
             .representedObject = group
         menu.addItem(withTitle: "Close", action: #selector(closeMenuAction(_:)), keyEquivalent: "")
             .representedObject = group
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinGroupMenuAction(_:)), keyEquivalent: "")
-            .representedObject = group
+        if !isPinned(bundleIdentifier: group.bundleIdentifier) {
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinGroupMenuAction(_:)), keyEquivalent: "")
+                .representedObject = group
+        }
         for item in menu.items {
             item.target = self
         }
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: view.bounds.height), in: view)
+    }
+
+    private func isPinned(bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        return allPinnedBundleIdentifiers.contains(bundleIdentifier)
     }
 
     @objc private func minimizeMenuAction(_ sender: NSMenuItem) {
@@ -277,9 +297,11 @@ public final class RunningWindowsStripView: NSView {
             .representedObject = window
         menu.addItem(withTitle: "Close", action: #selector(closeWindowMenuAction(_:)), keyEquivalent: "")
             .representedObject = window
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinWindowMenuAction(_:)), keyEquivalent: "")
-            .representedObject = window
+        if !isPinned(bundleIdentifier: window.ownerBundleIdentifier) {
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Pin to Taskbar", action: #selector(pinWindowMenuAction(_:)), keyEquivalent: "")
+                .representedObject = window
+        }
         for item in menu.items {
             item.target = self
         }

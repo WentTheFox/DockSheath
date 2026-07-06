@@ -227,6 +227,7 @@ public final class TaskbarViewController: NSViewController {
         pinnedStrip.isHidden = !isPrimaryDisplay
         pinnedStrip.pinnedApps = effectivePinnedApps
         runningStrip.pinnedBundleIdentifiers = Set(effectivePinnedApps.compactMap(\.bundleIdentifier))
+        runningStrip.allPinnedBundleIdentifiers = Set(pinnedApps.compactMap(\.bundleIdentifier))
         runningStrip.isPrimaryDisplay = isPrimaryDisplay
     }
 

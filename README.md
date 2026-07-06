@@ -106,6 +106,18 @@ Some example formats:
 | `h:mm a EEE` | `3:45 PM Tue` |
 | `M/d/yy h:mm a` | `7/3/26 3:45 PM` |
 
+### Fonts
+
+`appearance.buttonFont`, `appearance.displayNumberFont`, and `appearance.clockFont` control the font used by taskbar buttons (Start, pinned apps, running windows), the display-number badge, and the clock, respectively — independently of each other and of the taskbar's own thickness (`taskbar.sizeOverride`):
+
+```json5
+"buttonFont": { "family": "Menlo", "size": 11 },
+"displayNumberFont": { "family": "Menlo", "size": 10 },
+"clockFont": { "family": "Menlo", "size": 11 },
+```
+
+`family` is a font **family** name (e.g. `"Avenir Next"`), not a PostScript name — `null`, omitted, or a name that doesn't match an installed family all fall back to the system font. `size` is in points; defaults are 11/10/11 respectively, matching the look before these settings existed. Each element's font weight (regular for buttons, bold for the display number, medium for the clock) is fixed and not configurable.
+
 ### Secondary-display overrides
 
 When `behavior.showOnAllDisplays` is enabled, the `secondaryDisplay` section lets those taskbars differ from the main one. Any field you set under `secondaryDisplay.taskbar`/`secondaryDisplay.appearance` overrides the matching field in `taskbar`/`appearance`; anything left `null`/omitted inherits the main config's value. The primary display (the one the real Dock is on) always uses `taskbar`/`appearance` directly and ignores this section.
@@ -119,6 +131,9 @@ When `behavior.showOnAllDisplays` is enabled, the `secondaryDisplay` section let
     "theme": "dark",
     "showDisplayNumber": true,
     "clock": { "enabled": true, "format": "HH:mm" },
+    "buttonFont": { "family": "Menlo", "size": 11 },
+    "displayNumberFont": { "family": "Menlo", "size": 10 },
+    "clockFont": { "family": "Menlo", "size": 11 },
   },
 },
 ```

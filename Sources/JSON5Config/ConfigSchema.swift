@@ -162,6 +162,15 @@ public struct AppearanceConfig: Codable, Equatable {
     /// than one taskbar to tell apart.
     public var showDisplayNumber: Bool
     public var clock: ClockConfig
+    /// Font for every taskbar button's label (Start, pinned apps, running
+    /// windows).
+    public var buttonFont: FontConfig
+    /// Font for the display-number badge. Its bold weight is fixed, not
+    /// user-configurable — only family/size come from here.
+    public var displayNumberFont: FontConfig
+    /// Font for the clock. Its medium weight is fixed, not
+    /// user-configurable — only family/size come from here.
+    public var clockFont: FontConfig
 
     public init(
         theme: String = "auto",
@@ -171,7 +180,10 @@ public struct AppearanceConfig: Codable, Equatable {
         taskbarColors: TaskbarColorOverrides = TaskbarColorOverrides(),
         buttonColors: ButtonColorOverrides = ButtonColorOverrides(),
         showDisplayNumber: Bool = false,
-        clock: ClockConfig = ClockConfig()
+        clock: ClockConfig = ClockConfig(),
+        buttonFont: FontConfig = FontConfig(size: 11),
+        displayNumberFont: FontConfig = FontConfig(size: 10),
+        clockFont: FontConfig = FontConfig(size: 11)
     ) {
         self.theme = theme
         self.accentColor = accentColor
@@ -181,10 +193,14 @@ public struct AppearanceConfig: Codable, Equatable {
         self.buttonColors = buttonColors
         self.showDisplayNumber = showDisplayNumber
         self.clock = clock
+        self.buttonFont = buttonFont
+        self.displayNumberFont = displayNumberFont
+        self.clockFont = clockFont
     }
 
     private enum CodingKeys: String, CodingKey {
         case theme, accentColor, iconSize, showAppLabels, taskbarColors, buttonColors, showDisplayNumber, clock
+        case buttonFont, displayNumberFont, clockFont
     }
 
     public init(from decoder: Decoder) throws {
@@ -197,13 +213,17 @@ public struct AppearanceConfig: Codable, Equatable {
         buttonColors = try container.decodeIfPresent(ButtonColorOverrides.self, forKey: .buttonColors) ?? ButtonColorOverrides()
         showDisplayNumber = try container.decodeIfPresent(Bool.self, forKey: .showDisplayNumber) ?? false
         clock = try container.decodeIfPresent(ClockConfig.self, forKey: .clock) ?? ClockConfig()
+        buttonFont = try container.decodeIfPresent(FontConfig.self, forKey: .buttonFont) ?? FontConfig(size: 11)
+        displayNumberFont = try container.decodeIfPresent(FontConfig.self, forKey: .displayNumberFont) ?? FontConfig(size: 10)
+        clockFont = try container.decodeIfPresent(FontConfig.self, forKey: .clockFont) ?? FontConfig(size: 11)
     }
 
     /// Returns a copy with any non-nil field in `overrides` replacing this
     /// value's own — used to resolve a secondary display's effective
     /// appearance from `secondaryDisplay.appearance` + the top-level
-    /// `appearance`. `taskbarColors`/`buttonColors`/`clock` are replaced as
-    /// whole structs when overridden, not merged field-by-field.
+    /// `appearance`. `taskbarColors`/`buttonColors`/`clock`/the font configs
+    /// are replaced as whole structs when overridden, not merged
+    /// field-by-field.
     public func applying(_ overrides: AppearanceOverrides) -> AppearanceConfig {
         AppearanceConfig(
             theme: overrides.theme ?? theme,
@@ -213,7 +233,10 @@ public struct AppearanceConfig: Codable, Equatable {
             taskbarColors: overrides.taskbarColors ?? taskbarColors,
             buttonColors: overrides.buttonColors ?? buttonColors,
             showDisplayNumber: overrides.showDisplayNumber ?? showDisplayNumber,
-            clock: overrides.clock ?? clock
+            clock: overrides.clock ?? clock,
+            buttonFont: overrides.buttonFont ?? buttonFont,
+            displayNumberFont: overrides.displayNumberFont ?? displayNumberFont,
+            clockFont: overrides.clockFont ?? clockFont
         )
     }
 }
@@ -231,6 +254,9 @@ public struct AppearanceOverrides: Codable, Equatable {
     public var buttonColors: ButtonColorOverrides?
     public var showDisplayNumber: Bool?
     public var clock: ClockConfig?
+    public var buttonFont: FontConfig?
+    public var displayNumberFont: FontConfig?
+    public var clockFont: FontConfig?
 
     public init(
         theme: String? = nil,
@@ -240,7 +266,10 @@ public struct AppearanceOverrides: Codable, Equatable {
         taskbarColors: TaskbarColorOverrides? = nil,
         buttonColors: ButtonColorOverrides? = nil,
         showDisplayNumber: Bool? = nil,
-        clock: ClockConfig? = nil
+        clock: ClockConfig? = nil,
+        buttonFont: FontConfig? = nil,
+        displayNumberFont: FontConfig? = nil,
+        clockFont: FontConfig? = nil
     ) {
         self.theme = theme
         self.accentColor = accentColor
@@ -250,6 +279,40 @@ public struct AppearanceOverrides: Codable, Equatable {
         self.buttonColors = buttonColors
         self.showDisplayNumber = showDisplayNumber
         self.clock = clock
+        self.buttonFont = buttonFont
+        self.displayNumberFont = displayNumberFont
+        self.clockFont = clockFont
+    }
+}
+
+/// A user-configurable font for one taskbar element (buttons, the
+/// display-number badge, or the clock). `family` is a font *family* name
+/// (e.g. "Avenir Next"), not a PostScript name — see
+/// `TaskbarTheme.resolvedFont(family:size:weight:)` for how it's resolved.
+/// `nil`, empty, or an unrecognized family all fall back to the system font.
+/// Each element's font weight (regular/bold/medium) is fixed and not
+/// user-configurable — only family/size live here.
+///
+/// Note: `size` defaults to 11pt when omitted from a partial override,
+/// regardless of which element this is — so overriding `displayNumberFont`
+/// (whose real default is 10pt) with only `family` set yields 11pt, not 10pt.
+public struct FontConfig: Codable, Equatable {
+    public var family: String?
+    public var size: Double
+
+    public init(family: String? = nil, size: Double = 11) {
+        self.family = family
+        self.size = size
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case family, size
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        family = try container.decodeIfPresent(String.self, forKey: .family)
+        size = try container.decodeIfPresent(Double.self, forKey: .size) ?? 11
     }
 }
 

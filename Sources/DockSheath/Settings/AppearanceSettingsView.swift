@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 import JSON5Config
@@ -40,6 +41,12 @@ struct AppearanceSettingsView: View {
                 OptionalColorRow(title: "Background", hex: $model.config.appearance.buttonColors.background)
                 OptionalColorRow(title: "Border", hex: $model.config.appearance.buttonColors.border)
                 OptionalColorRow(title: "Text", hex: $model.config.appearance.buttonColors.text, fallback: .primary)
+            }
+
+            Section("Fonts") {
+                FontConfigRow(label: "Window buttons", font: $model.config.appearance.buttonFont)
+                FontConfigRow(label: "Display number", font: $model.config.appearance.displayNumberFont, weight: .bold)
+                FontConfigRow(label: "Clock", font: $model.config.appearance.clockFont, weight: .medium)
             }
 
             Section("Clock") {

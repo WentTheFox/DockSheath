@@ -80,6 +80,30 @@ struct SecondaryDisplaySettingsView: View {
                 }
 
                 OverrideRow(
+                    title: "Override window-button font",
+                    value: $model.config.secondaryDisplay.appearance.buttonFont,
+                    makeDefault: { model.config.appearance.buttonFont }
+                ) { binding in
+                    FontConfigRow(label: "Window buttons", font: binding)
+                }
+
+                OverrideRow(
+                    title: "Override display-number font",
+                    value: $model.config.secondaryDisplay.appearance.displayNumberFont,
+                    makeDefault: { model.config.appearance.displayNumberFont }
+                ) { binding in
+                    FontConfigRow(label: "Display number", font: binding, weight: .bold)
+                }
+
+                OverrideRow(
+                    title: "Override clock font",
+                    value: $model.config.secondaryDisplay.appearance.clockFont,
+                    makeDefault: { model.config.appearance.clockFont }
+                ) { binding in
+                    FontConfigRow(label: "Clock", font: binding, weight: .medium)
+                }
+
+                OverrideRow(
                     title: "Override \"show app labels\"",
                     value: $model.config.secondaryDisplay.appearance.showAppLabels,
                     makeDefault: { model.config.appearance.showAppLabels }

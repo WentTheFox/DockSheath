@@ -101,6 +101,81 @@ final class ConfigSchemaTests: XCTestCase {
         XCTAssertEqual(config.appearance.clock.format, "h:mm a")
     }
 
+    func testParsesFontConfig() throws {
+        let text = """
+        {
+          appearance: {
+            buttonFont: { family: 'Menlo', size: 13 },
+            displayNumberFont: { family: 'Avenir Next', size: 9 },
+            clockFont: { family: null, size: 14 },
+          },
+        }
+        """
+
+        let config = try TaskbarConfig.parse(json5: text)
+        XCTAssertEqual(config.appearance.buttonFont.family, "Menlo")
+        XCTAssertEqual(config.appearance.buttonFont.size, 13)
+        XCTAssertEqual(config.appearance.displayNumberFont.family, "Avenir Next")
+        XCTAssertEqual(config.appearance.displayNumberFont.size, 9)
+        XCTAssertNil(config.appearance.clockFont.family)
+        XCTAssertEqual(config.appearance.clockFont.size, 14)
+    }
+
+    func testFontConfigDefaultsWhenMissing() throws {
+        let text = "{ appearance: {} }"
+        let config = try TaskbarConfig.parse(json5: text)
+        XCTAssertNil(config.appearance.buttonFont.family)
+        XCTAssertEqual(config.appearance.buttonFont.size, 11)
+        XCTAssertNil(config.appearance.displayNumberFont.family)
+        XCTAssertEqual(config.appearance.displayNumberFont.size, 10)
+        XCTAssertNil(config.appearance.clockFont.family)
+        XCTAssertEqual(config.appearance.clockFont.size, 11)
+    }
+
+    func testFontConfigPartialOverrideFallsBackToElevenPoint() throws {
+        let text = """
+        {
+          appearance: {
+            displayNumberFont: { family: 'Menlo' },
+          },
+        }
+        """
+
+        let config = try TaskbarConfig.parse(json5: text)
+        XCTAssertEqual(config.appearance.displayNumberFont.family, "Menlo")
+        // displayNumberFont's true default is 10pt, but a partial override
+        // that omits `size` falls back to FontConfig's own baseline (11pt) —
+        // a documented, intentional wrinkle (see FontConfig's doc comment).
+        XCTAssertEqual(config.appearance.displayNumberFont.size, 11)
+    }
+
+    func testSecondaryDisplayFontOverrides() throws {
+        let text = """
+        {
+          appearance: {
+            buttonFont: { family: 'Menlo', size: 12 },
+            displayNumberFont: { family: 'Menlo', size: 10 },
+          },
+          secondaryDisplay: {
+            appearance: {
+              clockFont: { family: 'Avenir Next', size: 16 },
+            },
+          },
+        }
+        """
+
+        let config = try TaskbarConfig.parse(json5: text)
+        let effectiveAppearance = config.appearance.applying(config.secondaryDisplay.appearance)
+
+        XCTAssertEqual(effectiveAppearance.clockFont.family, "Avenir Next")
+        XCTAssertEqual(effectiveAppearance.clockFont.size, 16)
+        // Fields left unset in the override inherit the main config's value.
+        XCTAssertEqual(effectiveAppearance.buttonFont.family, "Menlo")
+        XCTAssertEqual(effectiveAppearance.buttonFont.size, 12)
+        XCTAssertEqual(effectiveAppearance.displayNumberFont.family, "Menlo")
+        XCTAssertEqual(effectiveAppearance.displayNumberFont.size, 10)
+    }
+
     func testSecondaryDisplayConfigDefaultsWhenMissing() throws {
         let text = "{ \"schemaVersion\": 1 }"
         let config = try TaskbarConfig.parse(json5: text)

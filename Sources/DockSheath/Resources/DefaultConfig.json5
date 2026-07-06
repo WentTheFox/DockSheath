@@ -86,6 +86,16 @@
       //   "M/d/yy h:mm a" -> "7/3/26 3:45 PM"
       "format": "h:mm a",
     },
+
+    // Fonts for taskbar buttons, the display-number badge, and the clock,
+    // independent of each other and of the taskbar's own thickness
+    // (taskbar.sizeOverride above). "family" is a font *family* name (e.g.
+    // "Avenir Next"), not a PostScript name; null, omitted, or an
+    // unrecognized family all fall back to the system font. Each element's
+    // font weight is fixed and not configurable here.
+    // "buttonFont": { "family": "Menlo", "size": 11 },
+    // "displayNumberFont": { "family": "Menlo", "size": 10 },
+    // "clockFont": { "family": "Menlo", "size": 11 },
   },
 
   // Overrides applied only to taskbars on secondary displays (any screen
@@ -107,6 +117,9 @@
       // "buttonColors": { "background": null, "border": null, "text": null },
       // "showDisplayNumber": true,
       // "clock": { "enabled": true, "format": "HH:mm" },
+      // "buttonFont": { "family": "Menlo", "size": 11 },
+      // "displayNumberFont": { "family": "Menlo", "size": 10 },
+      // "clockFont": { "family": "Menlo", "size": 11 },
     },
   },
 }

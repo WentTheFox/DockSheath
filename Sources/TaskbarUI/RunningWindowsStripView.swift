@@ -6,12 +6,48 @@ import JSON5Config
 /// button per app by default, or one button per window when `groupByApp` is
 /// false. Refreshes on app launch/terminate/activate notifications plus a
 /// coarse fallback poll for same-app window open/close (a fully
-/// AXObserver-driven live refresh is a post-MVP improvement).
+/// AXObserver-driven live refresh is a post-MVP improvement). `rebuildButtons()`
+/// diffs against `lastRenderedState` before touching the stack view, so a
+/// poll tick that finds nothing visually different is a no-op rather than a
+/// visible flicker.
 public final class RunningWindowsStripView: NSView {
+    /// A memoized representation of the last set of buttons actually built,
+    /// so `rebuildButtons()` can skip tearing down and recreating every
+    /// button when a poll/notification-driven `refresh()` finds nothing
+    /// visually different — the common case, since most of the time windows
+    /// just sit stationary between polls. `isGrouped` disambiguates a
+    /// grouped-app button from a per-window button that would otherwise
+    /// render identically (a single-window app, with `groupByApp` toggled),
+    /// so switching that setting always still forces a real rebuild.
+    private struct RenderedButtonState: Equatable {
+        let isGrouped: Bool
+        let icon: NSImage?
+        let title: String
+        let tooltip: String?
+        let isHighlighted: Bool
+        let showsLabel: Bool
+
+        /// `icon` compares by reference, not by pixel content — `app.icon`
+        /// is stable/cached across polls for an unchanged running app, and a
+        /// deep image compare would be needlessly expensive here anyway.
+        /// `title`/`tooltip` compare by value instead, since AX attribute
+        /// reads produce a fresh `String` instance every poll even when the
+        /// text itself hasn't changed.
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.isGrouped == rhs.isGrouped
+                && lhs.icon === rhs.icon
+                && lhs.title == rhs.title
+                && lhs.tooltip == rhs.tooltip
+                && lhs.isHighlighted == rhs.isHighlighted
+                && lhs.showsLabel == rhs.showsLabel
+        }
+    }
+
     private let stackView = NSStackView()
     private var orientationConstraints: [NSLayoutConstraint] = []
     private let service = WindowEnumerationService()
     private var groups: [RunningAppGroup] = []
+    private var lastRenderedState: [RenderedButtonState] = []
     private var pollTimer: Timer?
     public var refreshIntervalSeconds: TimeInterval = 1.5 {
         didSet { restartPolling() }
@@ -162,11 +198,6 @@ public final class RunningWindowsStripView: NSView {
     }
 
     private func rebuildButtons() {
-        stackView.arrangedSubviews.forEach {
-            stackView.removeArrangedSubview($0)
-            $0.removeFromSuperview()
-        }
-
         let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
         // Only the windows actually on this taskbar's own screen — a group
         // with windows spread across multiple displays gets a differently
@@ -184,6 +215,42 @@ public final class RunningWindowsStripView: NSView {
         let visibleGroups = onThisDisplay.filter {
             guard let bundleIdentifier = $0.bundleIdentifier else { return true }
             return !pinnedBundleIdentifiers.contains(bundleIdentifier)
+        }
+
+        let newState: [RenderedButtonState]
+        if groupByApp {
+            newState = visibleGroups.map { group in
+                RenderedButtonState(
+                    isGrouped: true,
+                    icon: group.icon,
+                    title: group.taskbarDisplayLabel,
+                    tooltip: group.taskbarTooltip,
+                    isHighlighted: group.id == frontmostPID,
+                    showsLabel: showsLabels
+                )
+            }
+        } else {
+            newState = visibleGroups.flatMap { group in
+                group.windows.map { window in
+                    let title = window.title?.isEmpty == false ? window.title! : group.appName
+                    return RenderedButtonState(
+                        isGrouped: false,
+                        icon: group.icon,
+                        title: title,
+                        tooltip: nil,
+                        isHighlighted: group.id == frontmostPID,
+                        showsLabel: showsLabels
+                    )
+                }
+            }
+        }
+
+        guard newState != lastRenderedState else { return }
+        lastRenderedState = newState
+
+        stackView.arrangedSubviews.forEach {
+            stackView.removeArrangedSubview($0)
+            $0.removeFromSuperview()
         }
 
         if groupByApp {

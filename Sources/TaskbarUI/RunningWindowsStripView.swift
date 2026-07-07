@@ -26,13 +26,18 @@ public final class RunningWindowsStripView: NSView {
         let tooltip: String?
         let isHighlighted: Bool
         let showsLabel: Bool
+        let iconSize: CGFloat
 
         /// `icon` compares by reference, not by pixel content — `app.icon`
         /// is stable/cached across polls for an unchanged running app, and a
         /// deep image compare would be needlessly expensive here anyway.
         /// `title`/`tooltip` compare by value instead, since AX attribute
         /// reads produce a fresh `String` instance every poll even when the
-        /// text itself hasn't changed.
+        /// text itself hasn't changed. `iconSize` is compared too, since it's
+        /// baked into the button at construction time (see `TaskbarButton
+        /// .init`) rather than being adjustable after the fact — without it
+        /// here, changing the icon-size setting would look like "nothing
+        /// visually changed" and the stale-sized buttons would never rebuild.
         static func == (lhs: Self, rhs: Self) -> Bool {
             lhs.isGrouped == rhs.isGrouped
                 && lhs.icon === rhs.icon
@@ -40,6 +45,7 @@ public final class RunningWindowsStripView: NSView {
                 && lhs.tooltip == rhs.tooltip
                 && lhs.isHighlighted == rhs.isHighlighted
                 && lhs.showsLabel == rhs.showsLabel
+                && lhs.iconSize == rhs.iconSize
         }
     }
 
@@ -65,6 +71,11 @@ public final class RunningWindowsStripView: NSView {
     }
 
     public var showsLabels: Bool = true {
+        didSet { rebuildButtons() }
+    }
+
+    /// Icon diameter (in points) for every button this strip builds.
+    public var iconSize: CGFloat = 32 {
         didSet { rebuildButtons() }
     }
 
@@ -237,7 +248,8 @@ public final class RunningWindowsStripView: NSView {
                     title: group.taskbarDisplayLabel,
                     tooltip: group.taskbarTooltip,
                     isHighlighted: group.id == frontmostPID,
-                    showsLabel: showsLabels
+                    showsLabel: showsLabels,
+                    iconSize: iconSize
                 )
             }
         } else {
@@ -250,7 +262,8 @@ public final class RunningWindowsStripView: NSView {
                         title: title,
                         tooltip: nil,
                         isHighlighted: group.id == frontmostPID,
-                        showsLabel: showsLabels
+                        showsLabel: showsLabels,
+                        iconSize: iconSize
                     )
                 }
             }
@@ -266,7 +279,7 @@ public final class RunningWindowsStripView: NSView {
 
         if groupByApp {
             for group in visibleGroups {
-                let button = TaskbarButton(icon: group.icon, title: group.taskbarDisplayLabel)
+                let button = TaskbarButton(icon: group.icon, title: group.taskbarDisplayLabel, iconSize: iconSize)
                 button.toolTip = group.taskbarTooltip
                 button.showsLabel = showsLabels
                 button.applyTheme(buttonTheme)
@@ -280,7 +293,7 @@ public final class RunningWindowsStripView: NSView {
             for group in visibleGroups {
                 for window in group.windows {
                     let title = window.title?.isEmpty == false ? window.title! : group.appName
-                    let button = TaskbarButton(icon: group.icon, title: title)
+                    let button = TaskbarButton(icon: group.icon, title: title, iconSize: iconSize)
                     button.showsLabel = showsLabels
                     button.applyTheme(buttonTheme)
                     button.isHighlighted = group.id == frontmostPID

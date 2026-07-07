@@ -26,6 +26,8 @@ struct FontConfigRow: View {
             HStack(spacing: 6) {
                 Text("\(label) preview")
                     .font(Font(TaskbarTheme.resolvedFont(family: font.family, size: font.size, weight: weight)))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if !familyIsKnown {
                     Text("Font not found — using system default")
                         .font(.footnote)

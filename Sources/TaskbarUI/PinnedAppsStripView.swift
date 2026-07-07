@@ -35,6 +35,11 @@ public final class PinnedAppsStripView: NSView {
         let tooltip: String?
         let isHighlighted: Bool
         let showsLabel: Bool
+        /// Compared for the same reason as `RunningWindowsStripView
+        /// .RenderedButtonState.iconSize` — baked into the button at
+        /// construction time, so it must be part of the diff or an
+        /// icon-size-only change would be treated as "nothing changed".
+        let iconSize: CGFloat
 
         static func == (lhs: Self, rhs: Self) -> Bool {
             lhs.isMerged == rhs.isMerged
@@ -43,6 +48,7 @@ public final class PinnedAppsStripView: NSView {
                 && lhs.tooltip == rhs.tooltip
                 && lhs.isHighlighted == rhs.isHighlighted
                 && lhs.showsLabel == rhs.showsLabel
+                && lhs.iconSize == rhs.iconSize
         }
     }
 
@@ -87,6 +93,11 @@ public final class PinnedAppsStripView: NSView {
     }
 
     public var showsLabels: Bool = true {
+        didSet { rebuildButtons() }
+    }
+
+    /// Icon diameter (in points) for every button this strip builds.
+    public var iconSize: CGFloat = 32 {
         didSet { rebuildButtons() }
     }
 
@@ -135,7 +146,8 @@ public final class PinnedAppsStripView: NSView {
                     title: group.taskbarDisplayLabel,
                     tooltip: group.taskbarTooltip,
                     isHighlighted: group.id == frontmostPID,
-                    showsLabel: showsLabels
+                    showsLabel: showsLabels,
+                    iconSize: iconSize
                 )
             }
             let icon = launcherIcon(forBundlePath: entry.bundlePath)
@@ -146,7 +158,8 @@ public final class PinnedAppsStripView: NSView {
                 title: name,
                 tooltip: nil,
                 isHighlighted: false,
-                showsLabel: false
+                showsLabel: false,
+                iconSize: iconSize
             )
         }
 
@@ -163,7 +176,7 @@ public final class PinnedAppsStripView: NSView {
             let button: TaskbarButton
 
             if let group {
-                button = TaskbarButton(icon: group.icon, title: group.taskbarDisplayLabel)
+                button = TaskbarButton(icon: group.icon, title: group.taskbarDisplayLabel, iconSize: iconSize)
                 button.toolTip = group.taskbarTooltip
                 button.showsLabel = showsLabels
                 button.isHighlighted = group.id == frontmostPID
@@ -173,7 +186,7 @@ public final class PinnedAppsStripView: NSView {
             } else {
                 let icon = launcherIcon(forBundlePath: entry.bundlePath)
                 let name = (entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
-                button = TaskbarButton(icon: icon, title: name)
+                button = TaskbarButton(icon: icon, title: name, iconSize: iconSize)
                 // Hidden regardless of `showsLabels` — a pinned app that
                 // hasn't been opened yet has no window title to show, and an
                 // app-name label would just duplicate the icon's tooltip.

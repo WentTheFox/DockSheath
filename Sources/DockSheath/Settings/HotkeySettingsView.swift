@@ -6,41 +6,43 @@ struct HotkeySettingsView: View {
     @State private var isRecording = false
 
     var body: some View {
-        Form {
-            Section {
-                Text("Toggles the taskbar's visibility, revealing the real Dock underneath.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+        ScrollView {
+            Form {
+                Section {
+                    Text("Toggles the taskbar's visibility, revealing the real Dock underneath.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
 
-                HStack {
-                    Text("Show/Hide Taskbar")
-                    Spacer()
+                    HStack {
+                        Text("Show/Hide Taskbar")
+                        Spacer()
 
-                    ZStack {
-                        // Captures the next key event while recording; sized
-                        // to match the button so it's invisible otherwise.
-                        ShortcutRecorderView(isRecording: $isRecording) { binding in
-                            model.config.hotkeys.toggleVisibility = binding
+                        ZStack {
+                            // Captures the next key event while recording; sized
+                            // to match the button so it's invisible otherwise.
+                            ShortcutRecorderView(isRecording: $isRecording) { binding in
+                                model.config.hotkeys.toggleVisibility = binding
+                            }
+                            .frame(width: 140, height: 24)
+
+                            Button(action: { isRecording.toggle() }) {
+                                Text(buttonLabel)
+                                    .frame(minWidth: 120)
+                            }
+                            .allowsHitTesting(!isRecording)
                         }
-                        .frame(width: 140, height: 24)
 
-                        Button(action: { isRecording.toggle() }) {
-                            Text(buttonLabel)
-                                .frame(minWidth: 120)
-                        }
-                        .allowsHitTesting(!isRecording)
-                    }
-
-                    if model.config.hotkeys.toggleVisibility != nil {
-                        Button("Clear") {
-                            model.config.hotkeys.toggleVisibility = nil
-                            isRecording = false
+                        if model.config.hotkeys.toggleVisibility != nil {
+                            Button("Clear") {
+                                model.config.hotkeys.toggleVisibility = nil
+                                isRecording = false
+                            }
                         }
                     }
                 }
             }
+            .padding(20)
         }
-        .padding(20)
     }
 
     private var buttonLabel: String {

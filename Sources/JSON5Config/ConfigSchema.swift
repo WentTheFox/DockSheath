@@ -126,30 +126,26 @@ public struct HotKeyBinding: Codable, Equatable {
 }
 
 public struct BehaviorConfig: Codable, Equatable {
-    public var autoHideOnMouseLeave: Bool
     public var showOnAllDisplays: Bool
     public var groupWindowsByApp: Bool
     public var refreshIntervalMs: Int
 
     public init(
-        autoHideOnMouseLeave: Bool = false,
         showOnAllDisplays: Bool = false,
         groupWindowsByApp: Bool = true,
         refreshIntervalMs: Int = 1500
     ) {
-        self.autoHideOnMouseLeave = autoHideOnMouseLeave
         self.showOnAllDisplays = showOnAllDisplays
         self.groupWindowsByApp = groupWindowsByApp
         self.refreshIntervalMs = refreshIntervalMs
     }
 
     private enum CodingKeys: String, CodingKey {
-        case autoHideOnMouseLeave, showOnAllDisplays, groupWindowsByApp, refreshIntervalMs
+        case showOnAllDisplays, groupWindowsByApp, refreshIntervalMs
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        autoHideOnMouseLeave = try container.decodeIfPresent(Bool.self, forKey: .autoHideOnMouseLeave) ?? false
         showOnAllDisplays = try container.decodeIfPresent(Bool.self, forKey: .showOnAllDisplays) ?? false
         groupWindowsByApp = try container.decodeIfPresent(Bool.self, forKey: .groupWindowsByApp) ?? true
         refreshIntervalMs = try container.decodeIfPresent(Int.self, forKey: .refreshIntervalMs) ?? 1500

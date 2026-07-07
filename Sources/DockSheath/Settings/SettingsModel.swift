@@ -29,6 +29,12 @@ final class SettingsModel: ObservableObject {
     /// Apps…" item) without needing `SettingsView`'s own `@State`, which a
     /// window controller can't reach after the view's already been built.
     @Published var selectedTab: SettingsTab = .general
+    /// Not part of `TaskbarConfig` — set by `AppDelegate` via
+    /// `SettingsWindowController`, same as `selectedTab`. Lets the
+    /// "Check for Updates Now" button in `GeneralSettingsView` reach
+    /// `AppDelegate`'s `UpdateChecker` without this model needing a direct
+    /// reference to `AppDelegate` itself.
+    var onCheckForUpdatesNow: (() -> Void)?
 
     private var saveWorkItem: DispatchWorkItem?
     private static let saveDebounce: TimeInterval = 0.3

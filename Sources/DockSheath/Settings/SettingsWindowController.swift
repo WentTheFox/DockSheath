@@ -8,6 +8,14 @@ import SwiftUI
 final class SettingsWindowController: NSWindowController {
     private let model = SettingsModel()
 
+    /// Forwarded straight to `model` — set by `AppDelegate` right after
+    /// construction, same as `showAndActivate(selecting:)` sets
+    /// `model.selectedTab`.
+    var onCheckForUpdatesNow: (() -> Void)? {
+        get { model.onCheckForUpdatesNow }
+        set { model.onCheckForUpdatesNow = newValue }
+    }
+
     convenience init() {
         // Wide enough that all 5 tabs' labels fit in the native tab strip —
         // narrower than this (the previous 520pt), SwiftUI's macOS TabView

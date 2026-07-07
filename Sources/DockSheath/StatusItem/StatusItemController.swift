@@ -12,6 +12,7 @@ final class StatusItemController {
     private var overlayController: OverlayWindowController?
     private var dockWarningMenuItem: NSMenuItem?
     private var toggleMenuItem: NSMenuItem?
+    private var updateMenuItem: NSMenuItem?
     private var onOpenSetup: (() -> Void)?
 
     /// Called alongside the primary overlay's own toggle, so secondary-screen
@@ -21,6 +22,13 @@ final class StatusItemController {
     /// editing config.json5 through it doesn't need Accessibility access or
     /// a running taskbar.
     var onOpenSettings: (() -> Void)?
+    /// Runs a manual update check — available in both menu states, since
+    /// checking doesn't need Accessibility access or a running taskbar.
+    var onCheckForUpdatesNow: (() -> Void)?
+    /// Launches `Scripts/update.sh` in the user's default terminal (see
+    /// `UpdateLauncher`) — only offered once `updateAvailability(_:)` has
+    /// reported an update is actually available.
+    var onUpdateAndRestart: (() -> Void)?
 
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -59,6 +67,14 @@ final class StatusItemController {
         settingsItem.target = self
         menu.addItem(settingsItem)
 
+        let checkForUpdatesItem = NSMenuItem(
+            title: "Check for Updates…",
+            action: #selector(checkForUpdatesNow),
+            keyEquivalent: ""
+        )
+        checkForUpdatesItem.target = self
+        menu.addItem(checkForUpdatesItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit DockSheath", action: #selector(quit), keyEquivalent: "q")
@@ -68,6 +84,7 @@ final class StatusItemController {
         statusItem.menu = menu
         toggleMenuItem = nil
         dockWarningMenuItem = nil
+        updateMenuItem = nil
     }
 
     private func buildRunningMenu() {
@@ -96,6 +113,14 @@ final class StatusItemController {
         editConfigItem.target = self
         menu.addItem(editConfigItem)
 
+        let checkForUpdatesItem = NSMenuItem(
+            title: "Check for Updates…",
+            action: #selector(checkForUpdatesNow),
+            keyEquivalent: ""
+        )
+        checkForUpdatesItem.target = self
+        menu.addItem(checkForUpdatesItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit DockSheath", action: #selector(quit), keyEquivalent: "q")
@@ -104,6 +129,7 @@ final class StatusItemController {
 
         statusItem.menu = menu
         dockWarningMenuItem = nil
+        updateMenuItem = nil
     }
 
     func updateDockHealth(_ diagnosis: DockHealthCheck.Diagnosis) {
@@ -126,6 +152,31 @@ final class StatusItemController {
         menu.insertItem(warningItem, at: 0)
         menu.insertItem(.separator(), at: 1)
         dockWarningMenuItem = warningItem
+    }
+
+    /// Shows/hides the "Update & Restart…" item at the top of the running
+    /// menu (below any dock-warning item — that one's rarer and higher
+    /// priority). Only meaningful once the taskbar is running; the pending-
+    /// setup menu never shows this, even if an update happens to be
+    /// available — it still has the "Check for Updates…" item to act on.
+    func updateAvailability(_ status: UpdateChecker.Status) {
+        guard overlayController != nil, let menu = statusItem.menu else { return }
+
+        if let existing = updateMenuItem {
+            menu.removeItem(existing)
+            updateMenuItem = nil
+        }
+
+        guard case .updateAvailable = status else { return }
+
+        // Insert below any existing dock-warning item — that one's rarer
+        // and higher priority, so it stays pinned at the very top.
+        let insertionIndex = dockWarningMenuItem != nil ? 2 : 0
+        let item = NSMenuItem(title: "Update & Restart…", action: #selector(updateAndRestart), keyEquivalent: "")
+        item.target = self
+        menu.insertItem(item, at: insertionIndex)
+        menu.insertItem(.separator(), at: insertionIndex + 1)
+        updateMenuItem = item
     }
 
     @objc private func openSetup() {
@@ -179,5 +230,13 @@ final class StatusItemController {
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+
+    @objc private func checkForUpdatesNow() {
+        onCheckForUpdatesNow?()
+    }
+
+    @objc private func updateAndRestart() {
+        onUpdateAndRestart?()
     }
 }

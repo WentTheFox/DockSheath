@@ -59,6 +59,14 @@ public final class TaskbarViewController: NSViewController {
     /// "Open Settings…" item.
     public var onManagePinnedApps: (() -> Void)?
 
+    /// Whether an "Update & Restart…" item should appear in the Quick
+    /// Launch menu — set by `TaskbarInstance` from `AppDelegate`'s update
+    /// checker. See `QuickLaunchMenuController.updateAvailable` for why
+    /// this is a plain `Bool`.
+    public var updateAvailable: Bool = false
+    public var onCheckForUpdatesNow: (() -> Void)?
+    public var onUpdateAndRestart: (() -> Void)?
+
     /// The resolved appearance/color theme applied to the taskbar's own
     /// background/border and passed down to every button. Defaults to
     /// `.standard`, which follows the system light/dark appearance and
@@ -365,6 +373,9 @@ public final class TaskbarViewController: NSViewController {
     private func showQuickLaunchMenu() {
         quickLaunchMenuController.favorites = quickLaunchFavorites
         quickLaunchMenuController.onManagePinnedApps = { [weak self] in self?.onManagePinnedApps?() }
+        quickLaunchMenuController.updateAvailable = updateAvailable
+        quickLaunchMenuController.onCheckForUpdatesNow = { [weak self] in self?.onCheckForUpdatesNow?() }
+        quickLaunchMenuController.onUpdateAndRestart = { [weak self] in self?.onUpdateAndRestart?() }
         quickLaunchMenuController.show(from: startButton)
     }
 }

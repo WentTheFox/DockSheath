@@ -31,6 +31,7 @@ With `behavior.showOnAllDisplays` enabled, DockSheath also renders a taskbar on 
 - Optional taskbar on every other connected display too (`behavior.showOnAllDisplays`) — those screens have no real Dock reserving space for it, so DockSheath actively keeps windows there from sitting underneath it; each display's taskbar only shows the windows actually open on it (falling back to the main display for a window whose screen can't be determined), and the pinned-apps strip only ever appears on the main display
 - Optional display-number badge and formatted clock at the trailing edge of each taskbar (`appearance.showDisplayNumber`, `appearance.clock`)
 - Secondary-display taskbars can override taskbar size and appearance independently (`secondaryDisplay`), inheriting anything left unset from the main config
+- Optional automatic update check (`updateCheck.checkForUpdates`) — compares your git clone against its remote-tracking branch and offers **Update & Restart…** from the Quick Launch and status bar menus when it's behind; "Check for Updates…" in either menu also works on demand regardless of the toggle
 
 ## Requirements
 
@@ -56,6 +57,12 @@ Or `open Package.swift` to build and run directly from Xcode instead. Move `buil
 To pull the latest changes and rebuild an existing install in one step, run `Scripts/update.sh` (defaults to `/Applications`, or pass a different install directory). It quits the running app if needed, replaces the installed `.app`, and clears the quarantine attribute (`xattr -cr`) on the newly built binary so Gatekeeper doesn't block it.
 
 Before building, `update.sh` also checks your login keychain for a local code-signing certificate named `DockSheath Local Signing` and signs the build with it. This keeps your Accessibility/Screen Recording grant working across rebuilds — see [Permissions](#permissions) below for why, and how to create that certificate. If the certificate isn't there yet, the script prints setup instructions and pauses, waiting for a keypress before it re-checks and continues — no need to re-run it, just create the certificate and press any key.
+
+### Checking for updates from within the app
+
+DockSheath defaults `updateCheck.repositoryPath` to the folder it's currently running from, when that's inside a git checkout — true right after the `Scripts/build_app.sh` steps above, before `update.sh` moves the app to `/Applications`. If your setup doesn't match that (e.g. you've already moved the app out), set `updateCheck.repositoryPath` in config (or via **Settings… > General > Updates**) to the absolute path of your git clone — not the installed `.app`, which is just a build artifact copied out of it. Either way, turn on "Check for updates automatically" to compare your local branch against its remote-tracking branch at launch, or use "Check for Updates…" in either the Quick Launch or status bar menu at any time.
+
+When an update is available, both menus offer **Update & Restart…**. Since `update.sh` needs your input (the code-signing trust keypress above, and possibly a git/keychain credential prompt), DockSheath can't run it in the background — choosing this opens it in your default terminal app instead, pulling the latest changes first (so it's not running a just-superseded copy of the script itself), then running `update.sh`, then reopening DockSheath automatically once the script finishes.
 
 ## Permissions
 

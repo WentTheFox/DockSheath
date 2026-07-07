@@ -13,7 +13,6 @@ final class ConfigSchemaTests: XCTestCase {
           "taskbar": { "sizeOverride": null, },
           "hotkeys": { "toggleVisibility": { "keyCode": 2, "modifiers": ["command", "option"] } },
           "behavior": {
-            "autoHideOnMouseLeave": false,
             "showOnAllDisplays": false,
             "groupWindowsByApp": true,
             "refreshIntervalMs": 1500,

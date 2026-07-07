@@ -8,14 +8,13 @@ import JSON5Config
 /// config file on every keystroke).
 ///
 /// Saving goes through the same `ConfigStore.save(_:)` used by pinning/
-/// unpinning an app from the taskbar UI, so it round-trips through the
-/// existing live-reload path (`ConfigFileWatcher` → `onConfigChanged` →
-/// `AppDelegate.applyConfig`) — edits here take effect on the running
-/// taskbar the same way a hand edit to config.json5 would, just without
-/// needing to close the loop back into this object: `ConfigStore.shared
-/// .config` is intentionally not re-observed here, since this object is the
-/// authoritative source of truth for the config for as long as the window
-/// stays open.
+/// unpinning an app from the taskbar UI, which applies the change to the
+/// running taskbar immediately (`onConfigChanged` → `AppDelegate.applyConfig`)
+/// as well as persisting it to disk — edits here take effect right away,
+/// with no dependency on `ConfigFileWatcher` noticing the write: `ConfigStore
+/// .shared.config` is intentionally not re-observed here, since this object
+/// is the authoritative source of truth for the config for as long as the
+/// window stays open.
 enum SettingsTab: Hashable {
     case general, appearance, secondaryDisplay, hotkey, pinnedApps
 }

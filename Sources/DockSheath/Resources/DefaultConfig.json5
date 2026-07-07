@@ -40,7 +40,6 @@
   },
 
   "behavior": {
-    "autoHideOnMouseLeave": false,
     // Also render a taskbar on every connected screen besides the one the
     // real Dock is on. Those screens have no OS-level space reservation of
     // their own, so DockSheath actively watches for windows that drift

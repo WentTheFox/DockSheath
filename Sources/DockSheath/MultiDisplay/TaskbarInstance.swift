@@ -71,6 +71,8 @@ final class TaskbarInstance {
         viewController.theme = TaskbarTheme.resolve(effectiveAppearance)
         viewController.showAppLabels = effectiveAppearance.showAppLabels
         viewController.groupWindowsByApp = config.behavior.groupWindowsByApp
+        viewController.iconSize = CGFloat(effectiveAppearance.iconSize)
+        viewController.refreshIntervalSeconds = TimeInterval(config.behavior.refreshIntervalMs) / 1000
         viewController.pinnedApps = config.pinnedApps
         viewController.quickLaunchFavorites = config.quickLaunchFavorites
         viewController.showDisplayNumber = effectiveAppearance.showDisplayNumber

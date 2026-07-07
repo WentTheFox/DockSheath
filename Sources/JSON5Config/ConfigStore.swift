@@ -58,8 +58,16 @@ public final class ConfigStore {
         return config
     }
 
-    /// Persists a config change made from the UI (e.g. pinning an app) back
-    /// to disk. Note this rewrites the file as plain JSON, which loses any
+    /// Persists a config change made from the UI (e.g. pinning an app, or
+    /// editing Settings) back to disk, and applies it immediately —
+    /// `onConfigChanged` is called directly here rather than waiting for
+    /// `ConfigFileWatcher` to notice the write and call `reload()`, since
+    /// that round trip (disk write → kqueue event → debounce → re-read) is
+    /// unnecessary latency/fragility for a change that originated in this
+    /// same process. The watcher is still needed and still runs — it's the
+    /// only signal for an *external* hand-edit to config.json5 — this just
+    /// means an in-app change no longer depends on it too.
+    /// Note this rewrites the file as plain JSON, which loses any
     /// hand-written comments — acceptable for MVP since it only happens when
     /// the user actively drives a UI action that mutates config.
     public func save(_ newConfig: TaskbarConfig) {
@@ -72,6 +80,7 @@ public final class ConfigStore {
         } catch {
             onLoadError?(error)
         }
+        onConfigChanged?(newConfig)
     }
 
     public func startWatching() {

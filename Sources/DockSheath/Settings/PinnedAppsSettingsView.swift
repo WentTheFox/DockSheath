@@ -36,48 +36,50 @@ struct PinnedAppsSettingsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Pinned Apps")
-                .font(.headline)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Pinned Apps")
+                    .font(.headline)
 
-            List {
-                ForEach(pinnedSomewhere) { entry in
-                    HStack {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: entry.bundlePath))
-                            .resizable()
-                            .frame(width: 20, height: 20)
-                        Text((entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: ""))
-                        Spacer()
-                        Toggle("Taskbar", isOn: taskbarBinding(bundlePath: entry.bundlePath, bundleIdentifier: entry.bundleIdentifier))
-                        Toggle("Quick Launch", isOn: quickLaunchBinding(bundlePath: entry.bundlePath, bundleIdentifier: entry.bundleIdentifier))
-                    }
-                }
-            }
-            .frame(minHeight: 120)
-
-            Divider()
-
-            Text("Add an app")
-                .font(.subheadline)
-            TextField("Search installed apps…", text: $query)
-                .onAppear { if allApps.isEmpty { allApps = InstalledAppsIndex.scan() } }
-
-            if !searchResults.isEmpty {
-                List(searchResults.prefix(8)) { app in
-                    HStack {
-                        Image(nsImage: app.icon)
-                            .resizable()
-                            .frame(width: 20, height: 20)
-                        Text(app.name)
-                        Spacer()
-                        Toggle("Taskbar", isOn: taskbarBinding(bundlePath: app.bundlePath, bundleIdentifier: app.bundleIdentifier))
-                        Toggle("Quick Launch", isOn: quickLaunchBinding(bundlePath: app.bundlePath, bundleIdentifier: app.bundleIdentifier))
+                List {
+                    ForEach(pinnedSomewhere) { entry in
+                        HStack {
+                            Image(nsImage: NSWorkspace.shared.icon(forFile: entry.bundlePath))
+                                .resizable()
+                                .frame(width: 20, height: 20)
+                            Text((entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: ""))
+                            Spacer()
+                            Toggle("Taskbar", isOn: taskbarBinding(bundlePath: entry.bundlePath, bundleIdentifier: entry.bundleIdentifier))
+                            Toggle("Quick Launch", isOn: quickLaunchBinding(bundlePath: entry.bundlePath, bundleIdentifier: entry.bundleIdentifier))
+                        }
                     }
                 }
                 .frame(minHeight: 120)
+
+                Divider()
+
+                Text("Add an app")
+                    .font(.subheadline)
+                TextField("Search installed apps…", text: $query)
+                    .onAppear { if allApps.isEmpty { allApps = InstalledAppsIndex.scan() } }
+
+                if !searchResults.isEmpty {
+                    List(searchResults.prefix(8)) { app in
+                        HStack {
+                            Image(nsImage: app.icon)
+                                .resizable()
+                                .frame(width: 20, height: 20)
+                            Text(app.name)
+                            Spacer()
+                            Toggle("Taskbar", isOn: taskbarBinding(bundlePath: app.bundlePath, bundleIdentifier: app.bundleIdentifier))
+                            Toggle("Quick Launch", isOn: quickLaunchBinding(bundlePath: app.bundlePath, bundleIdentifier: app.bundleIdentifier))
+                        }
+                    }
+                    .frame(minHeight: 120)
+                }
             }
+            .padding(20)
         }
-        .padding(20)
     }
 
     private func taskbarBinding(bundlePath: String, bundleIdentifier: String?) -> Binding<Bool> {

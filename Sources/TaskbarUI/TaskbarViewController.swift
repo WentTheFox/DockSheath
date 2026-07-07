@@ -81,6 +81,21 @@ public final class TaskbarViewController: NSViewController {
         didSet { applyGroupWindowsByApp() }
     }
 
+    /// Icon diameter (in points) for pinned and running-window buttons. The
+    /// Start button's icon size is fixed regardless of this value, since
+    /// it's a `let`-constructed stored property rather than one rebuilt on
+    /// every refresh like the strips' buttons are.
+    public var iconSize: CGFloat = 32 {
+        didSet { applyIconSize() }
+    }
+
+    /// How often `runningStrip` re-enumerates windows as a fallback poll,
+    /// in seconds — see `RunningWindowsStripView.refreshIntervalSeconds`.
+    public var refreshIntervalSeconds: TimeInterval {
+        get { runningStrip.refreshIntervalSeconds }
+        set { runningStrip.refreshIntervalSeconds = newValue }
+    }
+
     /// 1-based, following `NSScreen.screens` order — only meaningful when
     /// `showDisplayNumber` is on.
     public var displayNumber: Int = 1 {
@@ -198,6 +213,7 @@ public final class TaskbarViewController: NSViewController {
         applyTheme()
         applyShowLabels()
         applyGroupWindowsByApp()
+        applyIconSize()
         updateDisplayNumberIndicator()
         applyClockConfig()
 
@@ -260,6 +276,13 @@ public final class TaskbarViewController: NSViewController {
     private func applyGroupWindowsByApp() {
         guard isViewLoaded else { return }
         runningStrip.groupByApp = groupWindowsByApp
+    }
+
+    /// Safe to call before `viewDidLoad()` runs, same as `applyTheme()`.
+    private func applyIconSize() {
+        guard isViewLoaded else { return }
+        pinnedStrip.iconSize = iconSize
+        runningStrip.iconSize = iconSize
     }
 
     private func updateDisplayNumberIndicator() {

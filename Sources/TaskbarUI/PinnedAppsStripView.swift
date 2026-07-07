@@ -16,8 +16,47 @@ import JSON5Config
 /// its windows open/close/multiply — only the running-windows strip's own,
 /// unpinned groups reflow around it.
 public final class PinnedAppsStripView: NSView {
+    /// A memoized representation of the last set of buttons actually built —
+    /// see `RunningWindowsStripView.RenderedButtonState`, which this mirrors.
+    /// `runningGroups` gets reassigned every ~1.5s poll tick regardless of
+    /// whether anything actually changed (`TaskbarViewController` forwards
+    /// `RunningWindowsStripView.onGroupsUpdated` unconditionally), so without
+    /// this gate a pinned app's button would flicker in lockstep even though
+    /// pinned apps themselves rarely change.
+    private struct RenderedButtonState: Equatable {
+        /// True once a pinned entry has a matching running group, at which
+        /// point its button switches from an icon-only launcher to an
+        /// activate/minimize button — kept distinct so that transition
+        /// always forces a real rebuild even in the (rare) case an app's
+        /// resolved launcher icon/name happens to match its running state.
+        let isMerged: Bool
+        let icon: NSImage?
+        let title: String
+        let tooltip: String?
+        let isHighlighted: Bool
+        let showsLabel: Bool
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.isMerged == rhs.isMerged
+                && lhs.icon === rhs.icon
+                && lhs.title == rhs.title
+                && lhs.tooltip == rhs.tooltip
+                && lhs.isHighlighted == rhs.isHighlighted
+                && lhs.showsLabel == rhs.showsLabel
+        }
+    }
+
     private let stackView = NSStackView()
     private var orientationConstraints: [NSLayoutConstraint] = []
+    private var lastRenderedState: [RenderedButtonState] = []
+    /// Memoizes `NSWorkspace.icon(forFile:)` results by bundle path so a
+    /// not-yet-running pinned app's icon stays the same `NSImage` instance
+    /// across rebuilds — `NSWorkspace.icon(forFile:)`, unlike
+    /// `NSRunningApplication.icon`, isn't known to reliably return the same
+    /// instance for repeat calls, which would otherwise make `RenderedButtonState`
+    /// see a "changed" icon on every single rebuild and defeat the memoization
+    /// gate above for this specific case.
+    private var launcherIconCache: [String: NSImage] = [:]
     public var pinnedApps: [PinnedAppEntry] = [] {
         didSet { rebuildButtons() }
     }
@@ -85,12 +124,39 @@ public final class PinnedAppsStripView: NSView {
     }
 
     private func rebuildButtons() {
+        let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+
+        let newState: [RenderedButtonState] = pinnedApps.map { entry in
+            let group = runningGroups.first { $0.bundleIdentifier != nil && $0.bundleIdentifier == entry.bundleIdentifier }
+            if let group {
+                return RenderedButtonState(
+                    isMerged: true,
+                    icon: group.icon,
+                    title: group.taskbarDisplayLabel,
+                    tooltip: group.taskbarTooltip,
+                    isHighlighted: group.id == frontmostPID,
+                    showsLabel: showsLabels
+                )
+            }
+            let icon = launcherIcon(forBundlePath: entry.bundlePath)
+            let name = (entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+            return RenderedButtonState(
+                isMerged: false,
+                icon: icon,
+                title: name,
+                tooltip: nil,
+                isHighlighted: false,
+                showsLabel: false
+            )
+        }
+
+        guard newState != lastRenderedState else { return }
+        lastRenderedState = newState
+
         stackView.arrangedSubviews.forEach {
             stackView.removeArrangedSubview($0)
             $0.removeFromSuperview()
         }
-
-        let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
 
         for entry in pinnedApps {
             let group = runningGroups.first { $0.bundleIdentifier != nil && $0.bundleIdentifier == entry.bundleIdentifier }
@@ -105,7 +171,7 @@ public final class PinnedAppsStripView: NSView {
                 button.onRightClick = { [weak self] in self?.showContextMenu(for: entry, group: group, from: button) }
                 button.onMiddleClick = { [weak self] in self?.launch(entry, newInstance: true) }
             } else {
-                let icon = NSWorkspace.shared.icon(forFile: entry.bundlePath)
+                let icon = launcherIcon(forBundlePath: entry.bundlePath)
                 let name = (entry.bundlePath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
                 button = TaskbarButton(icon: icon, title: name)
                 // Hidden regardless of `showsLabels` — a pinned app that
@@ -120,6 +186,16 @@ public final class PinnedAppsStripView: NSView {
             button.applyTheme(buttonTheme)
             stackView.addArrangedSubview(button)
         }
+    }
+
+    /// Memoized `NSWorkspace.icon(forFile:)` lookup — see `launcherIconCache`.
+    private func launcherIcon(forBundlePath path: String) -> NSImage {
+        if let cached = launcherIconCache[path] {
+            return cached
+        }
+        let icon = NSWorkspace.shared.icon(forFile: path)
+        launcherIconCache[path] = icon
+        return icon
     }
 
     private func applyButtonTheme() {

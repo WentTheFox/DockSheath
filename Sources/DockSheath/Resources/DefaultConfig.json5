@@ -106,6 +106,24 @@
     // "clockFont": { "family": "Menlo", "size": 11 },
   },
 
+  // Checks whether this app's git clone (see repositoryPath) has new commits
+  // on its remote-tracking branch, and offers an "Update & Restart…" action
+  // from the Quick Launch and status bar menus when it does. This only
+  // *checks* — the actual update still runs Scripts/update.sh interactively
+  // in your default terminal app, since that script needs your input (a
+  // code-signing trust prompt, and possibly your password).
+  "updateCheck": {
+    // Run the check automatically at launch (and whenever this file
+    // reloads). "Check for Updates…" in the menus/Settings always works
+    // regardless of this.
+    "checkForUpdates": false,
+    // Absolute path to the git clone DockSheath was built from (NOT the
+    // installed .app — e.g. "/Users/you/dev/DockSheath"). Required for
+    // either automatic or manual checks to do anything; leave null to
+    // disable. Set this via Settings > General's folder picker, or by hand.
+    "repositoryPath": null,
+  },
+
   // Overrides applied only to taskbars on secondary displays (any screen
   // besides the one the real Dock is on — see behavior.showOnAllDisplays).
   // Any field left null/omitted here falls back to the matching field in

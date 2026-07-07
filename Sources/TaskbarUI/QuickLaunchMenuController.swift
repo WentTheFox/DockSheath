@@ -17,6 +17,17 @@ public final class QuickLaunchMenuController: NSObject {
     /// Opens Settings to the Pinned Apps tab — forwarded as-is from
     /// `TaskbarViewController`.
     public var onManagePinnedApps: (() -> Void)?
+    /// Whether an "Update & Restart…" item should be shown. Deliberately a
+    /// plain `Bool`, not the richer status type `AppDelegate`'s update
+    /// checker uses — `TaskbarUI` has no dependency on the `DockSheath`
+    /// executable target, so it can't know about that type.
+    public var updateAvailable: Bool = false
+    /// Runs a manual update check — always available regardless of
+    /// `updateAvailable`.
+    public var onCheckForUpdatesNow: (() -> Void)?
+    /// Launches `Scripts/update.sh` in the user's default terminal — only
+    /// wired up meaningfully once `updateAvailable` is true.
+    public var onUpdateAndRestart: (() -> Void)?
 
     public func show(from view: NSView) {
         let menu = NSMenu()
@@ -30,6 +41,17 @@ public final class QuickLaunchMenuController: NSObject {
         )
         menu.addItem(titleItem)
         menu.addItem(.separator())
+
+        if updateAvailable {
+            let updateItem = NSMenuItem(
+                title: "Update & Restart…",
+                action: #selector(updateAndRestartMenuAction),
+                keyEquivalent: ""
+            )
+            updateItem.target = self
+            menu.addItem(updateItem)
+            menu.addItem(.separator())
+        }
 
         if favorites.isEmpty {
             let emptyItem = NSMenuItem(title: "No Pinned Apps", action: nil, keyEquivalent: "")
@@ -51,6 +73,14 @@ public final class QuickLaunchMenuController: NSObject {
         let settingsItem = NSMenuItem(title: "Open Settings…", action: #selector(openSettingsMenuAction), keyEquivalent: "")
         settingsItem.target = self
         menu.addItem(settingsItem)
+
+        let checkForUpdatesItem = NSMenuItem(
+            title: "Check for Updates…",
+            action: #selector(checkForUpdatesMenuAction),
+            keyEquivalent: ""
+        )
+        checkForUpdatesItem.target = self
+        menu.addItem(checkForUpdatesItem)
 
         let quitItem = NSMenuItem(title: "Quit DockSheath", action: #selector(quitMenuAction), keyEquivalent: "")
         quitItem.target = self
@@ -85,6 +115,25 @@ public final class QuickLaunchMenuController: NSObject {
         onManagePinnedApps?()
     }
 
+    @objc private func checkForUpdatesMenuAction() {
+        onCheckForUpdatesNow?()
+    }
+
+    /// Gets its own confirmation for the same reason Restart/Shut Down do
+    /// below — this kicks off a rebuild-and-relaunch, not a one-click
+    /// reversible action, so it should never fire from an accidental click.
+    @objc private func updateAndRestartMenuAction() {
+        confirm(
+            messageText: "Update DockSheath and restart it?",
+            informativeText: "This pulls the latest changes, rebuilds the app, and reopens it. A terminal " +
+                "window will open — follow any prompts there (you may need to confirm a code-signing " +
+                "certificate or enter your password).",
+            confirmTitle: "Update & Restart"
+        ) { [weak self] in
+            self?.onUpdateAndRestart?()
+        }
+    }
+
     @objc private func quitMenuAction() {
         NSApp.terminate(nil)
     }
@@ -101,29 +150,33 @@ public final class QuickLaunchMenuController: NSObject {
     /// same as the Apple menu's own unconfirmed Sleep item), so it skips this.
     @objc private func restartMenuAction() {
         confirm(
-            action: .restart,
             messageText: "Restart your Mac?",
+            informativeText: "Any unsaved work in open apps may be lost.",
             confirmTitle: "Restart"
-        )
+        ) {
+            SystemPowerAction.restart.perform()
+        }
     }
 
     @objc private func shutDownMenuAction() {
         confirm(
-            action: .shutDown,
             messageText: "Shut down your Mac?",
+            informativeText: "Any unsaved work in open apps may be lost.",
             confirmTitle: "Shut Down"
-        )
+        ) {
+            SystemPowerAction.shutDown.perform()
+        }
     }
 
-    private func confirm(action: SystemPowerAction, messageText: String, confirmTitle: String) {
+    private func confirm(messageText: String, informativeText: String, confirmTitle: String, onConfirm: () -> Void) {
         let alert = NSAlert()
         alert.messageText = messageText
-        alert.informativeText = "Any unsaved work in open apps may be lost."
+        alert.informativeText = informativeText
         alert.addButton(withTitle: confirmTitle)
         alert.addButton(withTitle: "Cancel")
 
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        action.perform()
+        onConfirm()
     }
 }

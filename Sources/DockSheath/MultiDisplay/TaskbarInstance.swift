@@ -26,7 +26,9 @@ final class TaskbarInstance {
         screen: NSScreen,
         displayNumber: Int,
         reservationStrategy: OverlayWindowController.ReservationStrategy,
-        onManagePinnedApps: @escaping () -> Void
+        onManagePinnedApps: @escaping () -> Void,
+        onCheckForUpdatesNow: @escaping () -> Void,
+        onUpdateAndRestart: @escaping () -> Void
     ) {
         let viewController = TaskbarViewController()
         self.viewController = viewController
@@ -58,6 +60,12 @@ final class TaskbarInstance {
             ConfigStore.shared.save(updated)
         }
         viewController.onManagePinnedApps = onManagePinnedApps
+        viewController.onCheckForUpdatesNow = onCheckForUpdatesNow
+        viewController.onUpdateAndRestart = onUpdateAndRestart
+    }
+
+    func setUpdateAvailable(_ available: Bool) {
+        viewController.updateAvailable = available
     }
 
     func apply(config: TaskbarConfig) {

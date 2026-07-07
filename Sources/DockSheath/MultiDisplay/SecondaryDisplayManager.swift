@@ -24,6 +24,13 @@ final class SecondaryDisplayManager {
     private let windowService = WindowEnumerationService()
     private var enforcementTimer: Timer?
     private let onManagePinnedApps: () -> Void
+    private let onCheckForUpdatesNow: () -> Void
+    private let onUpdateAndRestart: () -> Void
+    /// Reapplied to every instance in `rebuildInstances()`, so a screen that
+    /// connects after an update was already detected still shows the
+    /// "Update & Restart…" item right away instead of waiting for the next
+    /// check.
+    private var lastUpdateAvailable = false
 
     private static let enforcementInterval: TimeInterval = 1.0
 
@@ -43,9 +50,16 @@ final class SecondaryDisplayManager {
         (NSScreen.screens.firstIndex(of: screen) ?? 0) + 1
     }
 
-    init(primaryScreen: NSScreen, onManagePinnedApps: @escaping () -> Void) {
+    init(
+        primaryScreen: NSScreen,
+        onManagePinnedApps: @escaping () -> Void,
+        onCheckForUpdatesNow: @escaping () -> Void,
+        onUpdateAndRestart: @escaping () -> Void
+    ) {
         self.primaryScreen = primaryScreen
         self.onManagePinnedApps = onManagePinnedApps
+        self.onCheckForUpdatesNow = onCheckForUpdatesNow
+        self.onUpdateAndRestart = onUpdateAndRestart
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(screenParametersDidChange),
@@ -72,6 +86,13 @@ final class SecondaryDisplayManager {
     func toggleVisibility() {
         for instance in instances.values {
             instance.toggleVisibility()
+        }
+    }
+
+    func setUpdateAvailable(_ available: Bool) {
+        lastUpdateAvailable = available
+        for instance in instances.values {
+            instance.setUpdateAvailable(available)
         }
     }
 
@@ -108,8 +129,11 @@ final class SecondaryDisplayManager {
                 screen: screen,
                 displayNumber: Self.displayNumber(for: screen),
                 reservationStrategy: .fixed(edge: edge),
-                onManagePinnedApps: onManagePinnedApps
+                onManagePinnedApps: onManagePinnedApps,
+                onCheckForUpdatesNow: onCheckForUpdatesNow,
+                onUpdateAndRestart: onUpdateAndRestart
             )
+            instance.setUpdateAvailable(lastUpdateAvailable)
             instances[id] = instance
             instance.start()
         }

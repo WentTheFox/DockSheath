@@ -206,6 +206,36 @@ final class ConfigSchemaTests: XCTestCase {
         XCTAssertEqual(effectiveAppearance.iconSize, 32)
     }
 
+    func testParsesUpdateCheckConfig() throws {
+        let text = """
+        {
+          updateCheck: {
+            checkForUpdates: true,
+            repositoryPath: '/Users/dev/DockSheath',
+          },
+        }
+        """
+
+        let config = try TaskbarConfig.parse(json5: text)
+        XCTAssertTrue(config.updateCheck.checkForUpdates)
+        XCTAssertEqual(config.updateCheck.repositoryPath, "/Users/dev/DockSheath")
+    }
+
+    func testUpdateCheckConfigDefaultsWhenMissing() throws {
+        let text = "{ \"schemaVersion\": 1 }"
+        let config = try TaskbarConfig.parse(json5: text)
+        XCTAssertEqual(config.updateCheck, UpdateCheckConfig())
+        XCTAssertFalse(config.updateCheck.checkForUpdates)
+        XCTAssertNil(config.updateCheck.repositoryPath)
+    }
+
+    func testUpdateCheckConfigPartiallySpecified() throws {
+        let text = "{ updateCheck: { checkForUpdates: true } }"
+        let config = try TaskbarConfig.parse(json5: text)
+        XCTAssertTrue(config.updateCheck.checkForUpdates)
+        XCTAssertNil(config.updateCheck.repositoryPath)
+    }
+
     func testMalformedJSONThrowsDecodingFailed() {
         let text = "{ this is not valid json5 at all"
         XCTAssertThrowsError(try TaskbarConfig.parse(json5: text)) { error in

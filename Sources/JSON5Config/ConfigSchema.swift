@@ -18,6 +18,7 @@ public struct TaskbarConfig: Codable, Equatable {
     /// top-level `taskbar`/`appearance` value — see `TaskbarAppearanceConfig
     /// .applying(_:)` / `AppearanceConfig.applying(_:)`.
     public var secondaryDisplay: SecondaryDisplayConfig
+    public var updateCheck: UpdateCheckConfig
 
     public init(
         schemaVersion: Int = 1,
@@ -27,7 +28,8 @@ public struct TaskbarConfig: Codable, Equatable {
         hotkeys: HotkeyConfig = HotkeyConfig(),
         behavior: BehaviorConfig = BehaviorConfig(),
         appearance: AppearanceConfig = AppearanceConfig(),
-        secondaryDisplay: SecondaryDisplayConfig = SecondaryDisplayConfig()
+        secondaryDisplay: SecondaryDisplayConfig = SecondaryDisplayConfig(),
+        updateCheck: UpdateCheckConfig = UpdateCheckConfig()
     ) {
         self.schemaVersion = schemaVersion
         self.pinnedApps = pinnedApps
@@ -37,6 +39,7 @@ public struct TaskbarConfig: Codable, Equatable {
         self.behavior = behavior
         self.appearance = appearance
         self.secondaryDisplay = secondaryDisplay
+        self.updateCheck = updateCheck
     }
 
     // Swift's synthesized Decodable requires every key to be present for
@@ -45,6 +48,7 @@ public struct TaskbarConfig: Codable, Equatable {
     // file that only sets a few fields (or is empty) still loads correctly.
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, pinnedApps, quickLaunchFavorites, taskbar, hotkeys, behavior, appearance, secondaryDisplay
+        case updateCheck
     }
 
     public init(from decoder: Decoder) throws {
@@ -57,6 +61,37 @@ public struct TaskbarConfig: Codable, Equatable {
         behavior = try container.decodeIfPresent(BehaviorConfig.self, forKey: .behavior) ?? BehaviorConfig()
         appearance = try container.decodeIfPresent(AppearanceConfig.self, forKey: .appearance) ?? AppearanceConfig()
         secondaryDisplay = try container.decodeIfPresent(SecondaryDisplayConfig.self, forKey: .secondaryDisplay) ?? SecondaryDisplayConfig()
+        updateCheck = try container.decodeIfPresent(UpdateCheckConfig.self, forKey: .updateCheck) ?? UpdateCheckConfig()
+    }
+}
+
+/// Settings for checking DockSheath's git clone for upstream commits and
+/// offering to rebuild/reinstall via Scripts/update.sh — see `UpdateChecker`
+/// in the DockSheath target for the actual git/Process work.
+public struct UpdateCheckConfig: Codable, Equatable {
+    /// Whether to compare local vs. remote-tracking branch automatically at
+    /// launch (and whenever config is reapplied). Manual "Check for Updates
+    /// Now" always works regardless of this flag.
+    public var checkForUpdates: Bool
+    /// Absolute path to the git clone DockSheath was built from — distinct
+    /// from the installed .app's location (usually /Applications/DockSheath
+    /// .app), which is a build artifact copied out of this repo, not the repo
+    /// itself. `nil` means "not configured"; the check silently no-ops.
+    public var repositoryPath: String?
+
+    public init(checkForUpdates: Bool = false, repositoryPath: String? = nil) {
+        self.checkForUpdates = checkForUpdates
+        self.repositoryPath = repositoryPath
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case checkForUpdates, repositoryPath
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        checkForUpdates = try container.decodeIfPresent(Bool.self, forKey: .checkForUpdates) ?? false
+        repositoryPath = try container.decodeIfPresent(String.self, forKey: .repositoryPath)
     }
 }
 

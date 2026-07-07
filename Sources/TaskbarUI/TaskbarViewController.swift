@@ -121,7 +121,7 @@ public final class TaskbarViewController: NSViewController {
     }
 
     public override func loadView() {
-        view = NSView()
+        view = TaskbarContainerView()
     }
 
     public override func viewDidLoad() {
@@ -320,6 +320,8 @@ public final class TaskbarViewController: NSViewController {
         let isHorizontal = currentEdge == .bottom
         let orientation: NSUserInterfaceLayoutOrientation = isHorizontal ? .horizontal : .vertical
 
+        (view as? TaskbarContainerView)?.isHorizontal = isHorizontal
+
         stack.orientation = orientation
         stack.alignment = isHorizontal ? .centerY : .centerX
         pinnedStrip.orientation = orientation
@@ -377,5 +379,47 @@ public final class TaskbarViewController: NSViewController {
         quickLaunchMenuController.onCheckForUpdatesNow = { [weak self] in self?.onCheckForUpdatesNow?() }
         quickLaunchMenuController.onUpdateAndRestart = { [weak self] in self?.onUpdateAndRestart?() }
         quickLaunchMenuController.show(from: startButton)
+    }
+}
+
+/// The taskbar's root view. Its own bounds span the full Dock reservation
+/// thickness (see `DockGeometry`), but every `TaskbarButton` inside it is only
+/// as tall/wide as its icon (`TaskbarButton.intrinsicContentSize`) and sits
+/// centered within that thickness — so there's blank margin above/below (or
+/// beside, when docked to a side) every button that's visually part of the
+/// taskbar but, without this override, isn't part of any view's clickable
+/// frame. `hitTest` widens each button's click target to the taskbar's full
+/// cross-axis extent, without changing how anything is drawn or laid out.
+private final class TaskbarContainerView: NSView {
+    var isHorizontal = true
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let defaultHit = super.hitTest(point)
+        if defaultHit is TaskbarButton { return defaultHit }
+
+        let localPoint = superview?.convert(point, to: self) ?? point
+        guard bounds.contains(localPoint) else { return defaultHit }
+
+        for button in allButtons() {
+            let buttonFrame = convert(button.bounds, from: button)
+            let inRange = isHorizontal
+                ? (localPoint.x >= buttonFrame.minX && localPoint.x <= buttonFrame.maxX)
+                : (localPoint.y >= buttonFrame.minY && localPoint.y <= buttonFrame.maxY)
+            if inRange { return button }
+        }
+        return defaultHit
+    }
+
+    private func allButtons() -> [TaskbarButton] {
+        var result: [TaskbarButton] = []
+        func walk(_ view: NSView) {
+            if let button = view as? TaskbarButton {
+                result.append(button)
+                return
+            }
+            view.subviews.forEach(walk)
+        }
+        subviews.forEach(walk)
+        return result
     }
 }

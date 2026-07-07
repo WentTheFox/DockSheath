@@ -118,9 +118,12 @@
     // regardless of this.
     "checkForUpdates": false,
     // Absolute path to the git clone DockSheath was built from (NOT the
-    // installed .app — e.g. "/Users/you/dev/DockSheath"). Required for
-    // either automatic or manual checks to do anything; leave null to
-    // disable. Set this via Settings > General's folder picker, or by hand.
+    // installed .app — e.g. "/Users/you/dev/DockSheath"). Leave null to
+    // default to the folder DockSheath is currently running from, when
+    // that's inside a git checkout (true right after Scripts/build_app.sh,
+    // before update.sh moves the app to /Applications) — set this by hand,
+    // or via Settings > General's folder picker, if that guess doesn't
+    // apply to your setup.
     "repositoryPath": null,
   },
 

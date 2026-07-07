@@ -76,7 +76,12 @@ public struct UpdateCheckConfig: Codable, Equatable {
     /// Absolute path to the git clone DockSheath was built from — distinct
     /// from the installed .app's location (usually /Applications/DockSheath
     /// .app), which is a build artifact copied out of this repo, not the repo
-    /// itself. `nil` means "not configured"; the check silently no-ops.
+    /// itself. `nil` means "not explicitly configured" — callers fall back
+    /// to `UpdateChecker.detectRepositoryPath()`'s best-effort guess (the
+    /// folder the app is currently running from) rather than no-opping
+    /// outright, so the check works out of the box when running straight
+    /// out of a git checkout; it only silently no-ops if that guess also
+    /// comes up empty.
     public var repositoryPath: String?
 
     public init(checkForUpdates: Bool = false, repositoryPath: String? = nil) {

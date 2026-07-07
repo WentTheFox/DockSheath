@@ -128,7 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registerHotKey(binding: config.hotkeys.toggleVisibility)
 
         if config.updateCheck.checkForUpdates {
-            updateChecker.checkNow(repositoryPath: config.updateCheck.repositoryPath)
+            updateChecker.checkNow(repositoryPath: resolvedRepositoryPath())
         }
     }
 
@@ -141,13 +141,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// `updateCheck.repositoryPath` is nil until the user sets it by hand —
+    /// fall back to `UpdateChecker.detectRepositoryPath()`'s best-effort
+    /// guess (the folder the app is currently running/built from) so the
+    /// check works out of the box for the common case of running straight
+    /// out of a git checkout, without requiring manual setup first.
+    private func resolvedRepositoryPath() -> String? {
+        ConfigStore.shared.config.updateCheck.repositoryPath ?? UpdateChecker.detectRepositoryPath()
+    }
+
     /// `manual` distinguishes an explicit "Check for Updates Now" click
     /// (which should show a result alert) from the silent automatic check
     /// `applyConfig` runs whenever `updateCheck.checkForUpdates` is on —
     /// both funnel through the same `UpdateChecker`/`onStatusChanged`.
     private func checkForUpdatesNow(manual: Bool) {
         isManualUpdateCheckInFlight = manual
-        updateChecker.checkNow(repositoryPath: ConfigStore.shared.config.updateCheck.repositoryPath)
+        updateChecker.checkNow(repositoryPath: resolvedRepositoryPath())
     }
 
     private func handleUpdateStatusChanged(_ status: UpdateChecker.Status) {
@@ -173,7 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func performUpdateAndRestart() {
         do {
-            try UpdateLauncher.launchUpdateAndRestart(repositoryPath: ConfigStore.shared.config.updateCheck.repositoryPath)
+            try UpdateLauncher.launchUpdateAndRestart(repositoryPath: resolvedRepositoryPath())
         } catch {
             let alert = NSAlert()
             alert.messageText = "Couldn't Start Update"

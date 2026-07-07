@@ -121,6 +121,35 @@ final class UpdateChecker {
     }
 }
 
+extension UpdateChecker {
+    /// Best-effort default for `updateCheck.repositoryPath` when the user
+    /// hasn't set one explicitly: walks up from wherever this app bundle is
+    /// currently running, looking for a directory containing
+    /// `Scripts/update.sh`. True right after `Scripts/build_app.sh` (the
+    /// README's own build steps run the app straight out of `build/
+    /// DockSheath.app`, inside the git checkout) — but not once `update.sh`
+    /// has moved the app to `/Applications`, since that copy is a build
+    /// artifact no longer inside the repo. Returns `nil` if no ancestor
+    /// matches, in which case the user has to set `repositoryPath` by hand.
+    static func detectRepositoryPath() -> String? {
+        let fileManager = FileManager.default
+        var directory = Bundle.main.bundleURL.deletingLastPathComponent()
+
+        // Bounded walk so a bundle running from some unrelated deep path
+        // can't spin all the way up to "/" for nothing.
+        for _ in 0..<8 {
+            let candidate = directory.appendingPathComponent("Scripts/update.sh").path
+            if fileManager.fileExists(atPath: candidate) {
+                return directory.path
+            }
+            let parent = directory.deletingLastPathComponent()
+            if parent == directory { break }
+            directory = parent
+        }
+        return nil
+    }
+}
+
 extension UpdateChecker.Status {
     /// Short, user-facing summary for a manual "Check for Updates Now"
     /// result alert. Not used for the silent automatic check.
